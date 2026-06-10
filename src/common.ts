@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -82,8 +83,23 @@ export async function packageVersion(name: string): Promise<string | undefined> 
     const pkg = require(`${name}/package.json`) as { version?: string };
     return String(pkg.version ?? '');
   } catch {
-    return undefined;
+    try {
+      const packageRoot = packageRootForEntry(require.resolve(name));
+      const pkg = await readJson<{ version?: string }>(path.join(packageRoot, 'package.json'));
+      return String(pkg.version ?? '');
+    } catch {
+      return undefined;
+    }
   }
+}
+
+function packageRootForEntry(entry: string): string {
+  let dir = path.dirname(entry);
+  while (dir !== path.dirname(dir)) {
+    if (fsSync.existsSync(path.join(dir, 'package.json'))) return dir;
+    dir = path.dirname(dir);
+  }
+  throw new Error(`could not find package root for ${entry}`);
 }
 
 export function printJson(value: unknown): void {

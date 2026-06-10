@@ -49,6 +49,13 @@ assert.deepEqual(snapshotTree(path.join(root, '.loom')), loomBeforeDiff);
 const api = await import('../dist/index.js');
 assert.equal(api.languageForPath('x.ts'), 'typescript');
 assert.equal(typeof api.scanLoomProject, 'function');
+assert.equal(api.isDelegateCommand('lang'), true);
+assert.equal(api.isDelegateCommand('frontier'), true);
+
+const langHelp = run('lang', '--help');
+assert.match(langHelp, /frontier-lang/);
+const swarmHelp = run('swarm', 'help');
+assert.match(swarmHelp, /frontier-swarm/);
 
 function run(...args) {
   return execFileSync(process.execPath, [cli, ...args], { cwd: root, encoding: 'utf8' });

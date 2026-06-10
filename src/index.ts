@@ -1,6 +1,7 @@
 export { parseArgs } from './args.js';
 export { createLoomConfig, readLoomConfig, writeLoomConfig } from './config.js';
 export { diffLoomProject } from './diff.js';
+export { isDelegateCommand, listDelegateTargets, resolveDelegateTarget, runDelegateCommand } from './delegate.js';
 export { readLoomGraph } from './graph.js';
 export { initLoomProject } from './init.js';
 export { createLoomProjectionPlan } from './project.js';

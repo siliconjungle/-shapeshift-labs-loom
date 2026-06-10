@@ -12,6 +12,10 @@ Usage:
   loom project --to <target> [--out <dir>] [--json]
   loom doctor [--json]
   loom swarm <frontier-swarm-codex args...>
+  loom swarm-codex <frontier-swarm-codex args...>
+  loom lang <frontier-lang args...>
+  loom frontier <frontier args...>
+  loom framework <frontier args...>
 
 Examples:
   loom init --name emulator --source "src/**/*.ts"
@@ -20,5 +24,7 @@ Examples:
   loom cat-file <object-id> --json
   loom project --to rust
   loom swarm collect --run agent-runs/my-run
+  loom lang import src/app.ts --sidecar --out .loom/semantic-imports.json
+  loom frontier doctor --json
 `;
 }

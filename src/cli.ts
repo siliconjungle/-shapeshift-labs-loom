@@ -11,11 +11,13 @@ import { diffLoomProject } from './diff.js';
 import { createLoomProjectionPlan } from './project.js';
 import { catLoomObject, snapshotLoomProject } from './snapshot.js';
 import { runSwarmCommand } from './swarm.js';
+import { isDelegateCommand, runDelegateCommand } from './delegate.js';
 import type { LoomLanguage } from './types.js';
 
 export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> {
   const command = argv[0] ?? 'help';
   if (command === 'swarm') return runSwarmCommand(argv.slice(1));
+  if (isDelegateCommand(command)) return runDelegateCommand(command, argv.slice(1));
   const args = parseArgs(argv.slice(1));
   const json = boolArg(args.json, false);
   try {
