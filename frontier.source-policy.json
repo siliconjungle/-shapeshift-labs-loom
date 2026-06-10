@@ -1,0 +1,6 @@
+{
+  "maxLines": 320,
+  "maxCharacters": 18000,
+  "sourceGlobs": ["src/**/*.ts", "test/**/*.mjs", "scripts/**/*.mjs"],
+  "ignoreGlobs": ["dist/**", "node_modules/**"]
+}

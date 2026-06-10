@@ -1,0 +1,76 @@
+{
+  "name": "@shapeshift-labs/loom",
+  "version": "0.1.0",
+  "description": "Repo-level semantic collaboration CLI over Frontier Lang, Frontier Swarm, and Frontier patches.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/siliconjungle/-shapeshift-labs-loom.git"
+  },
+  "homepage": "https://github.com/siliconjungle/-shapeshift-labs-loom#readme",
+  "bugs": {
+    "url": "https://github.com/siliconjungle/-shapeshift-labs-loom/issues"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "loom": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js",
+      "default": "./dist/cli.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "frontier.source-policy.json"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "node build.mjs --typecheck",
+    "lint": "node scripts/strict-source-policy.mjs",
+    "test": "npm run build && npm run typecheck && node test/smoke.mjs",
+    "prepare": "npm run build",
+    "prepack": "npm run lint && npm test",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "keywords": [
+    "frontier",
+    "loom",
+    "semantic-merge",
+    "swarm",
+    "cli",
+    "agents",
+    "universal-ast"
+  ],
+  "author": "ShapeShift Labs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@shapeshift-labs/frontier": "0.1.9",
+    "@shapeshift-labs/frontier-lang": "0.4.66",
+    "@shapeshift-labs/frontier-lang-compiler": "0.2.80",
+    "@shapeshift-labs/frontier-swarm": "0.5.19",
+    "@shapeshift-labs/frontier-swarm-codex": "0.5.83"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
+  }
+}
