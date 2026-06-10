@@ -1,4 +1,5 @@
 export { parseArgs } from './args.js';
+export { inspectDelegates, readLoomCapabilities } from './capabilities.js';
 export { createLoomConfig, readLoomConfig, writeLoomConfig } from './config.js';
 export { diffLoomProject } from './diff.js';
 export { isDelegateCommand, listDelegateTargets, resolveDelegateTarget, runDelegateCommand } from './delegate.js';

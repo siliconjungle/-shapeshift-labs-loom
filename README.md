@@ -39,9 +39,7 @@ Loom gives a repository a durable semantic workspace:
 - `loom frontier ...` delegates to Frontier Framework when that optional
   package is installed in the project.
 
-The package intentionally keeps the generic workspace layer small. Heavy
-capabilities live in the specialized Frontier packages and are reached through
-delegates.
+Loom stays small by delegating specialized capabilities to Frontier packages.
 
 ## Quick Start
 
@@ -52,6 +50,7 @@ loom status --json
 loom snapshot -m "initial semantic graph"
 loom diff --json
 loom project --to python
+loom capabilities
 loom swarm doctor
 loom lang import src/app.ts --language typescript --sidecar
 ```
@@ -133,7 +132,7 @@ Prints a stored Loom object by id.
 loom cat-file <object-id> [--json]
 ```
 
-Objects are JSON records with `kind`, `type`, and content-specific fields.
+Objects are JSON records with `kind`, `type`, and content fields.
 
 ### `loom project`
 
@@ -157,6 +156,22 @@ loom doctor [--json]
 Required packages are Frontier core, Frontier Lang, Frontier Lang CLI, Frontier
 Lang compiler, Frontier Swarm, and Frontier Swarm Codex. Frontier Framework is
 reported as an optional delegate.
+
+Plain output lists missing packages and delegate availability. `--json` also
+includes `packageName`, `binName`, `required`, `available`, `version`, `cliPath`,
+and resolution `error` fields.
+
+### `loom capabilities`
+
+Lists the front-door capability surface Loom exposes after installation.
+
+```sh
+loom capabilities [--json]
+```
+
+The report contains `nativeCommands` for Loom-owned behavior and `delegates`
+for lower-level CLIs reachable through Loom. Each delegate includes
+availability, required/optional status, version, path, and resolution errors.
 
 ### `loom swarm`
 
@@ -278,6 +293,7 @@ import {
   snapshotLoomProject,
   diffLoomProject,
   createLoomProjectionPlan,
+  readLoomCapabilities,
   runDelegateCommand
 } from '@shapeshift-labs/loom';
 
@@ -286,6 +302,7 @@ const scan = await scanLoomProject();
 const snapshot = await snapshotLoomProject({ message: 'semantic checkpoint' });
 const diff = await diffLoomProject();
 const projection = await createLoomProjectionPlan({ target: 'python' });
+const capabilities = await readLoomCapabilities();
 await runDelegateCommand('lang', ['import', 'src/app.ts', '--sidecar']);
 ```
 

@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseArgs, boolArg, listArg, stringArg } from './args.js';
+import { readLoomCapabilities } from './capabilities.js';
 import { helpText } from './help.js';
 import { printResult } from './output.js';
 import { initLoomProject } from './init.js';
@@ -54,6 +55,8 @@ export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> 
       }), json);
     } else if (command === 'doctor') {
       printResult(await doctorLoomProject(), json);
+    } else if (command === 'capabilities') {
+      printResult(await readLoomCapabilities(), json);
     } else {
       throw new Error(`unknown command: ${command}`);
     }

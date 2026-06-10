@@ -11,6 +11,7 @@ Usage:
   loom cat-file <object-id> [--json]
   loom project --to <target> [--out <dir>] [--json]
   loom doctor [--json]
+  loom capabilities [--json]
   loom swarm <frontier-swarm-codex args...>
   loom swarm-codex <frontier-swarm-codex args...>
   loom lang <frontier-lang args...>
@@ -23,6 +24,7 @@ Examples:
   loom snapshot -m "source graph checkpoint"
   loom cat-file <object-id> --json
   loom project --to rust
+  loom capabilities --json
   loom swarm collect --run agent-runs/my-run
   loom lang import src/app.ts --sidecar --out .loom/semantic-imports.json
   loom frontier doctor --json

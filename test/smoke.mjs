@@ -22,6 +22,17 @@ fs.writeFileSync(path.join(root, 'src', 'nested', 'util.ts'), 'export const nest
 run('init', '--name', 'demo', '--source', 'src/**/*.ts');
 run('scan');
 run('status');
+const capabilities = JSON.parse(run('capabilities', '--json'));
+assert.equal(capabilities.ok, true);
+assert.ok(capabilities.nativeCommands.some((item) => item.command === 'scan'));
+assert.ok(capabilities.delegates.some((item) => item.command === 'lang' && item.available));
+assert.ok(capabilities.delegates.some((item) => item.command === 'swarm' && item.available));
+const frontierDelegate = capabilities.delegates.find((item) => item.command === 'frontier');
+assert.equal(frontierDelegate.required, false);
+const doctor = JSON.parse(run('doctor', '--json'));
+assert.equal(doctor.ok, true);
+assert.deepEqual(doctor.missing, []);
+if (!frontierDelegate.available) assert.ok(doctor.optionalMissing.includes('@shapeshift-labs/frontier-framework'));
 run('graph');
 const snapshotOut = JSON.parse(run('snapshot', '-m', 'first semantic checkpoint', '--json'));
 assert.equal(snapshotOut.ok, true);
@@ -49,6 +60,7 @@ assert.deepEqual(snapshotTree(path.join(root, '.loom')), loomBeforeDiff);
 const api = await import('../dist/index.js');
 assert.equal(api.languageForPath('x.ts'), 'typescript');
 assert.equal(typeof api.scanLoomProject, 'function');
+assert.equal(typeof api.readLoomCapabilities, 'function');
 assert.equal(api.isDelegateCommand('lang'), true);
 assert.equal(api.isDelegateCommand('frontier'), true);
 

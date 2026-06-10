@@ -1,6 +1,6 @@
 import { abs, gitDirtyCount, packageVersion, pathExists, readJson, resolveRoot } from './common.js';
 import { readLoomConfig } from './config.js';
-import { listDelegateTargets } from './delegate.js';
+import { inspectDelegates } from './capabilities.js';
 import { readHeadRef, readRef } from './store.js';
 import type { LoomCommandResult, LoomGraph } from './types.js';
 
@@ -23,6 +23,7 @@ export async function readLoomStatus(options: { root?: string } = {}): Promise<L
   const headRef = configExists ? await readHeadRef(root).catch(() => undefined) : undefined;
   const headObject = headRef ? await readRef(root, headRef).catch(() => undefined) : undefined;
   const packages = await readPackageVersions();
+  const delegates = await inspectDelegates();
   return {
     ok: configExists,
     ready: Boolean(config && graph),
@@ -35,7 +36,7 @@ export async function readLoomStatus(options: { root?: string } = {}): Promise<L
     headObject,
     graphSummary: graph?.summary,
     packages,
-    delegates: listDelegateTargets()
+    delegates
   };
 }
 
@@ -54,8 +55,8 @@ export async function doctorLoomProject(options: { root?: string } = {}): Promis
   };
 }
 
-async function readPackageVersions(): Promise<Record<string, string | undefined>> {
-  const out: Record<string, string | undefined> = {};
-  for (const item of packageChecks) out[item.name] = await packageVersion(item.name);
+async function readPackageVersions(): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {};
+  for (const item of packageChecks) out[item.name] = await packageVersion(item.name) ?? null;
   return out;
 }
