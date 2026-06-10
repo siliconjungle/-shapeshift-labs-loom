@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseArgs, boolArg, listArg, stringArg } from './args.js';
+import { packageVersion } from './common.js';
 import { readLoomCapabilities } from './capabilities.js';
 import { helpText } from './help.js';
 import { printResult } from './output.js';
@@ -25,6 +26,8 @@ export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> 
   try {
     if (command === 'help' || command === '--help' || command === '-h') {
       process.stdout.write(helpText());
+    } else if (command === 'version' || command === '--version' || command === '-v') {
+      process.stdout.write(`${await packageVersion('@shapeshift-labs/loom') ?? 'unknown'}\n`);
     } else if (command === 'init') {
       printResult(await initLoomProject({
         name: stringArg(args.name),

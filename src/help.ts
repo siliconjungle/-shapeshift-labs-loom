@@ -12,6 +12,7 @@ Usage:
   loom project --to <target> [--out <dir>] [--json]
   loom doctor [--json]
   loom capabilities [--json]
+  loom version
   loom swarm <frontier-swarm-codex args...>
   loom swarm-codex <frontier-swarm-codex args...>
   loom lang <frontier-lang args...>

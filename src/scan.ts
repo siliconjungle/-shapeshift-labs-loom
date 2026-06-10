@@ -3,7 +3,7 @@ import { rel, gitHead, nowIso, resolveRoot, sha256, writeJson } from './common.j
 import { readLoomConfig, readLoomIgnore } from './config.js';
 import { listFiles, matchesAny } from './glob.js';
 import { updateRef, writeLoomObject } from './store.js';
-import type { LoomFileRecord, LoomGraph, LoomLanguage, LoomScanOptions, LoomSemanticSummary } from './types.js';
+import type { LoomFileRecord, LoomGraph, LoomLanguage, LoomScanOptions, LoomSemanticSummary, LoomSyntax } from './types.js';
 
 interface CompilerApi {
   importNativeSource?: (input: Record<string, unknown>) => unknown;
@@ -27,9 +27,11 @@ export async function scanLoomProject(options: LoomScanOptions = {}): Promise<{ 
     if (bytes.byteLength > config.source.maxFileBytes) continue;
     const sourceText = bytes.toString('utf8');
     const language = languageForPath(relative);
+    const syntax = syntaxForPath(relative);
     const record: LoomFileRecord = {
       path: relative,
       language,
+      syntax,
       bytes: bytes.byteLength,
       sha256: sha256(bytes)
     };
@@ -71,7 +73,9 @@ export async function collectSourceFiles(root: string): Promise<string[]> {
 
 function createGraph(root: string, files: LoomFileRecord[], head: string | undefined): LoomGraph {
   const languages: Record<string, number> = {};
+  const syntaxes: Record<string, number> = {};
   for (const file of files) languages[file.language] = (languages[file.language] ?? 0) + 1;
+  for (const file of files) syntaxes[file.syntax ?? file.language] = (syntaxes[file.syntax ?? file.language] ?? 0) + 1;
   return {
     kind: 'loom.graph',
     version: 1,
@@ -83,6 +87,7 @@ function createGraph(root: string, files: LoomFileRecord[], head: string | undef
       files: files.length,
       bytes: files.reduce((sum, file) => sum + file.bytes, 0),
       languages,
+      syntaxes,
       semanticImports: files.filter((file) => file.semantic?.ok).length,
       semanticSymbols: files.reduce((sum, file) => sum + (file.semantic?.symbols ?? 0), 0),
       semanticOwnershipRegions: files.reduce((sum, file) => sum + (file.semantic?.ownershipRegions ?? 0), 0),
@@ -155,6 +160,8 @@ function stringValue(value: unknown): string | undefined {
 }
 
 export function languageForPath(file: string): LoomLanguage {
+  if (/\.jsx$/.test(file)) return 'javascript';
+  if (/\.tsx$/.test(file)) return 'typescript';
   if (/\.[cm]?js$/.test(file)) return 'javascript';
   if (/\.tsx?$/.test(file)) return 'typescript';
   if (/\.py$/.test(file)) return 'python';
@@ -165,5 +172,27 @@ export function languageForPath(file: string): LoomLanguage {
   if (/\.java$/.test(file)) return 'java';
   if (/\.kt$/.test(file)) return 'kotlin';
   if (/\.swift$/.test(file)) return 'swift';
+  return 'unknown';
+}
+
+export function syntaxForPath(file: string): LoomSyntax {
+  if (/\.jsx$/.test(file)) return 'jsx';
+  if (/\.tsx$/.test(file)) return 'tsx';
+  if (/\.[cm]?js$/.test(file)) return 'javascript';
+  if (/\.ts$/.test(file)) return 'typescript';
+  if (/\.py$/.test(file)) return 'python';
+  if (/\.rs$/.test(file)) return 'rust';
+  if (/\.[ch]$/.test(file)) return 'c';
+  if (/\.cs$/.test(file)) return 'csharp';
+  if (/\.go$/.test(file)) return 'go';
+  if (/\.java$/.test(file)) return 'java';
+  if (/\.kt$/.test(file)) return 'kotlin';
+  if (/\.swift$/.test(file)) return 'swift';
+  if (/\.css$/.test(file)) return 'css';
+  if (/\.json$/.test(file)) return 'json';
+  if (/\.html?$/.test(file)) return 'html';
+  if (/\.svg$/.test(file)) return 'svg';
+  if (/\.mdx?$/.test(file)) return 'markdown';
+  if (/\.txt$/.test(file)) return 'text';
   return 'unknown';
 }

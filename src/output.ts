@@ -71,6 +71,8 @@ function printDelegateRows(rows: unknown[]): void {
     const state = record.available ? 'available' : 'missing';
     const required = record.required ? 'required' : 'optional';
     const version = record.version ? ` @ ${String(record.version)}` : '';
-    process.stdout.write(`- ${String(record.command)}: ${state}, ${required}${version}\n`);
+    const resolution = record.resolution ? `, ${String(record.resolution)}` : '';
+    const pathNote = record.pathRequired === false ? ', PATH optional' : '';
+    process.stdout.write(`- ${String(record.command)}: ${state}, ${required}${version}${resolution}${pathNote}\n`);
   }
 }

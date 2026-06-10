@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { packageVersion, resolveRoot } from './common.js';
 import { listDelegateTargets, resolveDelegateTarget } from './delegate.js';
 import type { LoomCommandResult } from './types.js';
@@ -42,8 +44,26 @@ export async function inspectDelegates(): Promise<Array<Record<string, unknown>>
       available,
       version: await packageVersion(target.packageName) ?? null,
       cliPath,
+      resolution: available ? 'package-bin' : null,
+      pathRequired: false,
+      pathAvailable: isOnPath(target.binName),
       error
     });
   }
   return rows;
+}
+
+function isOnPath(binName: string): boolean {
+  const paths = process.env.PATH?.split(path.delimiter).filter(Boolean) ?? [];
+  const candidates = process.platform === 'win32' ? [binName, `${binName}.cmd`, `${binName}.exe`] : [binName];
+  for (const dir of paths) {
+    for (const candidate of candidates) {
+      try {
+        if (fs.existsSync(path.join(dir, candidate))) return true;
+      } catch {
+        // Ignore unreadable PATH entries.
+      }
+    }
+  }
+  return false;
 }

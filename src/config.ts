@@ -7,21 +7,54 @@ export const loomConfigFile = 'loom.json';
 
 export const defaultIncludes = [
   'src/**/*.js',
+  'src/**/*.jsx',
   'src/**/*.mjs',
   'src/**/*.cjs',
   'src/**/*.ts',
+  'src/**/*.tsx',
+  'src/**/*.css',
+  'src/**/*.json',
+  'src/**/*.html',
+  'src/**/*.svg',
+  'app/**/*.js',
+  'app/**/*.jsx',
+  'app/**/*.ts',
+  'app/**/*.tsx',
+  'app/**/*.css',
+  'pages/**/*.js',
+  'pages/**/*.jsx',
+  'pages/**/*.ts',
+  'pages/**/*.tsx',
+  'components/**/*.js',
+  'components/**/*.jsx',
+  'components/**/*.ts',
+  'components/**/*.tsx',
   'test/**/*.js',
+  'test/**/*.jsx',
   'test/**/*.mjs',
+  'test/**/*.ts',
+  'test/**/*.tsx',
   'packages/**/*.js',
-  'packages/**/*.ts'
+  'packages/**/*.jsx',
+  'packages/**/*.ts',
+  'packages/**/*.tsx',
+  'public/**/*.html',
+  'public/**/*.css',
+  'public/**/*.json',
+  'public/**/*.svg',
+  'public/**/*.txt',
+  'public/**/*.md'
 ];
 
 export const defaultExcludes = [
   'node_modules/**',
   'dist/**',
+  'build/**',
   'coverage/**',
+  '.next/**',
   '.git/**',
-  '.loom/**'
+  '.loom/**',
+  'agent-runs/**'
 ];
 
 export function createLoomConfig(options: LoomInitOptions = {}): LoomConfig {

@@ -18,8 +18,15 @@ fs.writeFileSync(path.join(root, 'src', 'app.ts'), [
   ''
 ].join('\n'));
 fs.writeFileSync(path.join(root, 'src', 'nested', 'util.ts'), 'export const nested = true;\n');
+fs.writeFileSync(path.join(root, 'src', 'view.jsx'), 'export function View() { return <main />; }\n');
+fs.writeFileSync(path.join(root, 'src', 'theme.css'), 'main { display: block; }\n');
+fs.mkdirSync(path.join(root, 'public'), { recursive: true });
+fs.writeFileSync(path.join(root, 'public', 'index.html'), '<main></main>\n');
 
-run('init', '--name', 'demo', '--source', 'src/**/*.ts');
+run('init', '--name', 'demo');
+const expectedVersion = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf8')).version;
+assert.equal(run('version').trim(), expectedVersion);
+assert.equal(run('--version').trim(), expectedVersion);
 run('scan');
 run('status');
 const capabilities = JSON.parse(run('capabilities', '--json'));
@@ -30,6 +37,8 @@ assert.ok(capabilities.delegates.some((item) => item.command === 'swarm' && item
 const frontierDelegate = capabilities.delegates.find((item) => item.command === 'frontier');
 assert.equal(frontierDelegate.required, true);
 assert.equal(frontierDelegate.available, true);
+assert.equal(frontierDelegate.resolution, 'package-bin');
+assert.equal(frontierDelegate.pathRequired, false);
 const doctor = JSON.parse(run('doctor', '--json'));
 assert.equal(doctor.ok, true);
 assert.deepEqual(doctor.missing, []);
@@ -46,8 +55,20 @@ run('project', '--to', 'python');
 
 const graph = JSON.parse(fs.readFileSync(path.join(root, '.loom', 'graph', 'current.json'), 'utf8'));
 assert.equal(graph.kind, 'loom.graph');
-assert.equal(graph.summary.files, 2);
-assert.deepEqual(graph.files.map((file) => file.path), ['src/app.ts', 'src/nested/util.ts']);
+assert.equal(graph.summary.files, 5);
+assert.equal(graph.summary.syntaxes.jsx, 1);
+assert.equal(graph.summary.syntaxes.css, 1);
+assert.equal(graph.summary.syntaxes.html, 1);
+assert.deepEqual(graph.files.map((file) => file.path), [
+  'public/index.html',
+  'src/app.ts',
+  'src/nested/util.ts',
+  'src/theme.css',
+  'src/view.jsx'
+]);
+const jsxRecord = graph.files.find((file) => file.path === 'src/view.jsx');
+assert.equal(jsxRecord.language, 'javascript');
+assert.equal(jsxRecord.syntax, 'jsx');
 assert.equal(typeof graph.objectId, 'string');
 
 fs.appendFileSync(path.join(root, 'src', 'app.ts'), 'export const one = 1;\n');
@@ -60,6 +81,8 @@ assert.deepEqual(snapshotTree(path.join(root, '.loom')), loomBeforeDiff);
 
 const api = await import('../dist/index.js');
 assert.equal(api.languageForPath('x.ts'), 'typescript');
+assert.equal(api.languageForPath('x.jsx'), 'javascript');
+assert.equal(api.syntaxForPath('x.jsx'), 'jsx');
 assert.equal(typeof api.scanLoomProject, 'function');
 assert.equal(typeof api.readLoomCapabilities, 'function');
 assert.equal(api.isDelegateCommand('lang'), true);

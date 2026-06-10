@@ -53,6 +53,7 @@ loom snapshot -m "initial semantic graph"
 loom diff --json
 loom project --to python
 loom capabilities
+loom version
 loom swarm doctor
 loom lang import src/app.ts --language typescript --sidecar
 ```
@@ -74,6 +75,11 @@ Options:
 - `--exclude <glob>`: ignored path or glob. Repeatable.
 - `--language <name>`: expected language. Repeatable.
 - `--force`: replace an existing `loom.json`.
+
+Default source globs cover common app layouts and text assets, including
+`src`, `app`, `pages`, `components`, `packages`, `test`, and `public` files
+such as `.js`, `.jsx`, `.ts`, `.tsx`, `.css`, `.json`, `.html`, `.svg`, `.md`,
+and `.txt`.
 
 ### `loom scan`
 
@@ -160,7 +166,9 @@ Lang compiler, Frontier Swarm, Frontier Swarm Codex, and Frontier Framework.
 
 Plain output lists missing packages and delegate availability. `--json` also
 includes `packageName`, `binName`, `required`, `available`, `version`, `cliPath`,
-and resolution `error` fields.
+`resolution`, `pathRequired`, `pathAvailable`, and resolution `error` fields.
+Delegates resolve from installed package bins, so raw `frontier-swarm` or
+`frontier-lang` binaries do not need to be on `PATH` when `loom ...` works.
 
 ### `loom capabilities`
 
@@ -173,6 +181,17 @@ loom capabilities [--json]
 The report contains `nativeCommands` for Loom-owned behavior and `delegates`
 for lower-level CLIs reachable through Loom. Each delegate includes
 availability, required/optional status, version, path, and resolution errors.
+`pathRequired: false` means Loom can invoke the delegate through its package
+installation even if the underlying binary is not globally installed.
+
+### `loom version`
+
+Prints the installed Loom package version.
+
+```sh
+loom version
+loom --version
+```
 
 ### `loom swarm`
 

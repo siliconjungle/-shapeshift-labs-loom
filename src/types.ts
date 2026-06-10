@@ -13,6 +13,17 @@ export type LoomLanguage =
   | 'swift'
   | 'unknown';
 
+export type LoomSyntax =
+  | LoomLanguage
+  | 'jsx'
+  | 'tsx'
+  | 'css'
+  | 'json'
+  | 'html'
+  | 'svg'
+  | 'markdown'
+  | 'text';
+
 export interface LoomConfig {
   kind: 'loom.config';
   version: 1;
@@ -54,6 +65,7 @@ export interface LoomFrontierConfig {
 export interface LoomFileRecord {
   path: string;
   language: LoomLanguage;
+  syntax?: LoomSyntax;
   bytes: number;
   sha256: string;
   semantic?: LoomSemanticSummary;
@@ -88,6 +100,7 @@ export interface LoomGraphSummary {
   files: number;
   bytes: number;
   languages: Record<string, number>;
+  syntaxes?: Record<string, number>;
   semanticImports: number;
   semanticSymbols: number;
   semanticOwnershipRegions: number;
