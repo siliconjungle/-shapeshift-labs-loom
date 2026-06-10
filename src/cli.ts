@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseArgs, boolArg, listArg, stringArg } from './args.js';
 import { helpText } from './help.js';
@@ -65,7 +66,12 @@ export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> 
   }
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+function isCliEntrypoint(): boolean {
+  if (!process.argv[1]) return false;
+  return pathToFileURL(fs.realpathSync(process.argv[1])).href === import.meta.url;
+}
+
+if (isCliEntrypoint()) {
   runLoomCli().then((code) => {
     process.exitCode = code;
   });

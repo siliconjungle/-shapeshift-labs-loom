@@ -56,6 +56,10 @@ const langHelp = run('lang', '--help');
 assert.match(langHelp, /frontier-lang/);
 const swarmHelp = run('swarm', 'help');
 assert.match(swarmHelp, /frontier-swarm/);
+const symlinkBin = path.join(root, 'loom-bin');
+fs.symlinkSync(cli, symlinkBin);
+const symlinkHelp = execFileSync(symlinkBin, ['help'], { cwd: root, encoding: 'utf8' });
+assert.match(symlinkHelp, /semantic repo collaboration/);
 
 function run(...args) {
   return execFileSync(process.execPath, [cli, ...args], { cwd: root, encoding: 'utf8' });
