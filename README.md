@@ -1,5 +1,7 @@
 # Loom
 
+![.loom package hero](https://raw.githubusercontent.com/siliconjungle/-shapeshift-labs-loom/main/assets/loom-hero.png)
+
 `@shapeshift-labs/loom` is the project-level CLI for semantic source graphs,
 agent swarm coordination, and Frontier language tooling.
 
