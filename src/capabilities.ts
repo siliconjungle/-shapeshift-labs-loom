@@ -11,7 +11,7 @@ const nativeCommands = [
   { command: 'snapshot', purpose: 'Write a content-addressed semantic graph checkpoint.' },
   { command: 'cat-file', purpose: 'Print a stored Loom object by id.' },
   { command: 'project', purpose: 'Create a target-language projection plan.' },
-  { command: 'doctor', purpose: 'Check required and optional Frontier package resolution.' },
+  { command: 'doctor', purpose: 'Check Frontier package and delegate resolution.' },
   { command: 'capabilities', purpose: 'List native commands and delegated package surfaces.' }
 ];
 

@@ -38,8 +38,8 @@ Loom gives a repository a durable semantic workspace:
 - `loom swarm ...` delegates to Frontier Swarm / Codex worker orchestration.
 - `loom lang ...` delegates to Frontier Lang parsing, source import, slicing,
   projection, and universal AST commands.
-- `loom frontier ...` delegates to Frontier Framework when that optional
-  package is installed in the project.
+- `loom frontier ...` delegates to Frontier Framework app, evidence, harness,
+  and build commands.
 
 Loom stays small by delegating specialized capabilities to Frontier packages.
 
@@ -149,15 +149,14 @@ Options: `--to <target>` is required. `--out <dir>` defaults to
 
 ### `loom doctor`
 
-Checks required package resolution and reports optional delegates.
+Checks required package resolution and reports delegate availability.
 
 ```sh
 loom doctor [--json]
 ```
 
 Required packages are Frontier core, Frontier Lang, Frontier Lang CLI, Frontier
-Lang compiler, Frontier Swarm, and Frontier Swarm Codex. Frontier Framework is
-reported as an optional delegate.
+Lang compiler, Frontier Swarm, Frontier Swarm Codex, and Frontier Framework.
 
 Plain output lists missing packages and delegate availability. `--json` also
 includes `packageName`, `binName`, `required`, `available`, `version`, `cliPath`,
@@ -228,15 +227,14 @@ corpus-roundtrip, and target emitters from Frontier Lang.
 
 ### `loom frontier`
 
-Delegates to Frontier Framework when `@shapeshift-labs/frontier-framework` is
-installed in the project.
+Delegates to the installed Frontier Framework CLI.
 
 ```sh
 loom frontier <frontier args...>
 loom framework <frontier args...>
 ```
 
-Examples once the optional package is installed:
+Examples:
 
 ```sh
 loom frontier init
@@ -246,8 +244,9 @@ loom frontier harness --json
 loom frontier loop --strict --json
 ```
 
-If the optional framework package is missing, Loom exits with a clear install
-message instead of failing during package installation.
+This exposes app scaffolding, builds, config validation, auth and migration
+manifests, documentation evidence, surface coverage, harness gates, agent
+bundles, fuzz/bench gates, deploy plans, and static dev serving.
 
 ## Graph Shape
 
@@ -316,7 +315,5 @@ lower-level packages:
 Frontier Lang owns language parsing, universal ASTs, projections, and semantic
 sidecars. Frontier Swarm owns worker queues, evidence, adaptive scheduling,
 tournament feedback, and merge admission. Frontier Framework owns app
-build/evidence/harness workflows when installed. Frontier core owns patch/diff
+build/evidence/harness workflows. Frontier core owns patch/diff
 primitives.
-
-That split keeps Loom stable while each specialist package evolves.

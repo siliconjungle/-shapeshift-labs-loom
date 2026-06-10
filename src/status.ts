@@ -11,7 +11,7 @@ const packageChecks = [
   { name: '@shapeshift-labs/frontier-lang-compiler', required: true },
   { name: '@shapeshift-labs/frontier-swarm', required: true },
   { name: '@shapeshift-labs/frontier-swarm-codex', required: true },
-  { name: '@shapeshift-labs/frontier-framework', required: false }
+  { name: '@shapeshift-labs/frontier-framework', required: true }
 ];
 
 export async function readLoomStatus(options: { root?: string } = {}): Promise<LoomCommandResult> {

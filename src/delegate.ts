@@ -40,13 +40,13 @@ export const delegateTargets: Record<string, DelegateTarget> = {
   frontier: {
     packageName: '@shapeshift-labs/frontier-framework',
     binName: 'frontier',
-    required: false,
+    required: true,
     description: 'Frontier Framework app, evidence, harness, and build tools.'
   },
   framework: {
     packageName: '@shapeshift-labs/frontier-framework',
     binName: 'frontier',
-    required: false,
+    required: true,
     description: 'Explicit Frontier Framework CLI alias.'
   }
 };
