@@ -36,6 +36,8 @@ Loom gives a repository a durable semantic workspace:
 - `.loom/graph/current.json` is the current machine-readable source graph.
 - `.loom/projections/` stores target-language projection plans.
 - `loom swarm ...` delegates to Frontier Swarm / Codex worker orchestration.
+- `loom ui ...` opens the dark Loom dashboard against a swarm run or collected
+  swarm collection for inspecting and steering workers.
 - `loom lang ...` delegates to Frontier Lang parsing, source import, slicing,
   projection, and universal AST commands.
 - `loom frontier ...` delegates to Frontier Framework app, evidence, harness,
@@ -96,12 +98,18 @@ Output: `.loom/graph/current.json`, `.loom/index.json`,
 ### `loom status`
 
 Reports whether the project has Loom config, a current graph, git dirtiness,
-semantic HEAD/ref information, installed Frontier package versions, and
-delegate command availability.
+semantic HEAD/ref information, installed Frontier package versions, delegate
+command availability, and UI launch hints for detected local swarm runs or
+collections.
 
 ```sh
 loom status [--json]
 ```
+
+`--json` includes a `uiLaunch` block with canonical `loom ui ...` and
+`loom swarm dashboard ...` commands. When Loom sees local run evidence under
+`agent-runs/` or `.loom/runs/`, it reports ready-to-copy targets with both bare
+path commands and explicit `--run` or `--collection` forms.
 
 ### `loom graph`
 
@@ -162,13 +170,18 @@ loom doctor [--json]
 ```
 
 Required packages are Frontier core, Frontier Lang, Frontier Lang CLI, Frontier
-Lang compiler, Frontier Swarm, Frontier Swarm Codex, and Frontier Framework.
+Lang compiler, Frontier Swarm, Frontier Swarm Codex, Frontier Loom UI, and
+Frontier Framework.
 
 Plain output lists missing packages and delegate availability. `--json` also
 includes `packageName`, `binName`, `required`, `available`, `version`, `cliPath`,
 `resolution`, `pathRequired`, `pathAvailable`, and resolution `error` fields.
 Delegates resolve from installed package bins, so raw `frontier-swarm` or
 `frontier-lang` binaries do not need to be on `PATH` when `loom ...` works.
+For local package development, override a delegate with
+`LOOM_DELEGATE_<COMMAND>_CLI=/path/to/dist/cli.js` or
+`LOOM_DELEGATE_<COMMAND>_PACKAGE_ROOT=/path/to/package`; hyphenated commands
+use underscores, such as `LOOM_DELEGATE_SWARM_CODEX_CLI`.
 
 ### `loom capabilities`
 
@@ -209,14 +222,50 @@ loom swarm doctor
 loom swarm plan --manifest agent-ownership.json --tasks work-queue.json --outDir agent-runs/plan
 loom swarm run --manifest agent-ownership.json --tasks work-queue.json --workspace copy --concurrency 8
 loom swarm collect --run agent-runs/my-run
+loom swarm dashboard agent-runs/my-run/collected
+loom swarm ui agent-runs/my-run --open
+loom ui agent-runs/my-run
+loom swarm continue --collection agent-runs/my-run/collected --backlog swarm-backlog.json --routing-policy model-routing-policy.json
+LOOM_DELEGATE_SWARM_CODEX_CLI=../frontier-swarm-codex/dist/cli.js loom swarm-codex continue --collection agent-runs/my-run/collected
 loom swarm query --run agent-runs/my-run --semantic --readiness ready
 loom swarm tournament show --run agent-runs/my-run
 ```
 
 This exposes swarm planning, run/resume/stop, collect/query, merge admission,
-semantic sidecar inspection, adaptive/tournament scheduling, scoring, cleanup,
-repair-links, and verification commands provided by
+semantic sidecar inspection, adaptive/tournament scheduling, continuation from
+collected child backlogs/model-routing feedback, scoring, cleanup, repair-links,
+and verification commands provided by
 `@shapeshift-labs/frontier-swarm-codex`.
+
+### `loom ui`
+
+Delegates to the installed Frontier Loom UI package. `loom swarm dashboard` and
+`loom swarm ui` are aliases that keep the dashboard discoverable from swarm
+workflows. A bare path is treated as `--run` unless it looks like a collected
+swarm collection directory or `collection.json`, in which case Loom forwards it
+as `--collection`.
+
+```sh
+loom ui [<run-or-collection>] [frontier-loom-ui options...]
+loom swarm dashboard [<run-or-collection>] [frontier-loom-ui options...]
+loom swarm ui [<run-or-collection>] [frontier-loom-ui options...]
+```
+
+Examples:
+
+```sh
+loom ui agent-runs/my-run
+loom swarm dashboard agent-runs/my-run --open
+loom swarm ui agent-runs/my-run --port 4173
+loom swarm dashboard agent-runs/my-run/collected
+loom ui --collection agent-runs/my-run/collected --continuation agent-runs/my-run/continuation
+```
+
+The UI reads dashboard snapshots from `@shapeshift-labs/frontier-swarm-codex`
+and writes steering intent files for the coordinator to consume. The snapshot
+schema and steering API stay in the swarm packages rather than inside the UI.
+Run `loom status --json` to discover local `uiLaunch.detected` run and
+collection commands before opening a dashboard.
 
 ### `loom lang`
 

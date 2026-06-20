@@ -32,9 +32,14 @@ export async function inspectDelegates(): Promise<Array<Record<string, unknown>>
   for (const target of listDelegateTargets()) {
     let available = false;
     let cliPath: string | undefined;
+    let packageRoot: string | undefined;
+    let resolution: string | undefined;
     let error: string | undefined;
     try {
-      cliPath = resolveDelegateTarget(target.command).cliPath;
+      const resolved = resolveDelegateTarget(target.command);
+      cliPath = resolved.cliPath;
+      packageRoot = resolved.packageRoot;
+      resolution = resolved.resolution;
       available = true;
     } catch (caught) {
       error = caught instanceof Error ? caught.message : String(caught);
@@ -42,15 +47,28 @@ export async function inspectDelegates(): Promise<Array<Record<string, unknown>>
     rows.push({
       ...target,
       available,
-      version: await packageVersion(target.packageName) ?? null,
+      version: await readDelegateVersion(packageRoot, target.packageName),
       cliPath,
-      resolution: available ? 'package-bin' : null,
+      packageRoot,
+      resolution: resolution ?? null,
       pathRequired: false,
       pathAvailable: isOnPath(target.binName),
       error
     });
   }
   return rows;
+}
+
+async function readDelegateVersion(packageRoot: string | undefined, packageName: string): Promise<string | null> {
+  if (packageRoot) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')) as { version?: string };
+      return pkg.version ?? null;
+    } catch {
+      // Fall through to package resolution.
+    }
+  }
+  return await packageVersion(packageName) ?? null;
 }
 
 function isOnPath(binName: string): boolean {

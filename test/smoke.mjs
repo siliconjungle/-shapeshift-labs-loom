@@ -27,18 +27,119 @@ run('init', '--name', 'demo');
 const expectedVersion = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf8')).version;
 assert.equal(run('version').trim(), expectedVersion);
 assert.equal(run('--version').trim(), expectedVersion);
+const loomHelp = run('help');
+assert.match(loomHelp, /loom swarm ui \[<run-or-collection>\]/);
+assert.match(loomHelp, /status prints UI target dashboard commands, URL behavior, data source, run health, landed\/applied counts, and active artifact paths/);
+assert.match(loomHelp, /status --json reports uiLaunch commands, dashboard URL hints/);
+assert.match(loomHelp, /--steering-out-dir/);
+assert.match(loomHelp, /--run=agent-runs\/my-run/);
+fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected'), { recursive: true });
+fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected', 'apply-ledger'), { recursive: true });
+fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'codex-events.jsonl'), '{}\n');
+fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'collected', 'collection.json'), '{}\n');
+fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'collected', 'compact-dashboard.json'), JSON.stringify({
+  kind: 'frontier.swarm-codex.compact-dashboard',
+  total: 3,
+  activeJobs: 0,
+  usefulPatchCount: 2,
+  stalePatchCount: 0,
+  landedCount: 1
+}, null, 2) + '\n');
+fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'collected', 'apply-ledger', 'apply-ledger.json'), JSON.stringify({
+  kind: 'frontier.swarm-codex.apply-ledger',
+  summary: {
+    total: 2,
+    applied: 1,
+    committed: 0,
+    skipped: 0,
+    failed: 1
+  },
+  entries: [
+    {
+      jobId: 'demo-landed',
+      status: 'applied',
+      bundlePath: 'agent-runs/demo/collected/needs-human-port/demo-landed/merge.json',
+      patchPath: 'agent-runs/demo/collected/needs-human-port/demo-landed/changes.patch'
+    },
+    {
+      jobId: 'demo-failed',
+      status: 'failed',
+      bundlePath: 'agent-runs/demo/collected/failed-evidence/demo-failed/merge.json'
+    }
+  ]
+}, null, 2) + '\n');
 run('scan');
-run('status');
+const statusText = run('status');
+assert.match(statusText, /UI targets available via loom ui <path>/);
+assert.match(statusText, /ui target health:/);
+assert.match(statusText, /run agent-runs\/demo: dashboard=loom ui agent-runs\/demo; url=http:\/\/127\.0\.0\.1:<assigned-port>\/; source=--run agent-runs\/demo; health=active-artifacts; active artifacts=agent-runs\/demo\/codex-events\.jsonl/);
+assert.match(statusText, /collection agent-runs\/demo\/collected: dashboard=loom ui agent-runs\/demo\/collected; url=http:\/\/127\.0\.0\.1:<assigned-port>\/; source=--collection agent-runs\/demo\/collected; health=attention; total=3; active jobs=0; landed=1; applied=1; committed=0; skipped=0; failed=1; patches=2/);
+assert.match(statusText, /landed artifacts=agent-runs\/demo\/collected\/apply-ledger\/apply-ledger\.json/);
+assert.match(statusText, /health artifacts=agent-runs\/demo\/collected\/collection\.json, agent-runs\/demo\/collected\/compact-dashboard\.json/);
+const status = JSON.parse(run('status', '--json'));
+assert.equal(status.uiLaunch.command, 'loom ui <run-or-collection>');
+assert.equal(status.uiLaunch.dashboardCommand, 'loom swarm dashboard <run-or-collection>');
+assert.equal(status.uiLaunch.continuationFlag, '--continuation <continuation-dir-or-json>');
+assert.equal(status.uiLaunch.dashboardUrl, 'http://127.0.0.1:<assigned-port>/');
+assert.match(status.uiLaunch.dashboardUrlNote, /prints the active URL/);
+assert.equal(status.uiLaunch.health.targetCount, 2);
+assert.equal(status.uiLaunch.health.runCount, 1);
+assert.equal(status.uiLaunch.health.collectionCount, 1);
+assert.equal(status.uiLaunch.health.landed, 1);
+assert.equal(status.uiLaunch.health.applied, 1);
+assert.equal(status.uiLaunch.health.failed, 1);
+assert.ok(status.uiLaunch.health.activeArtifactPaths.includes('agent-runs/demo/codex-events.jsonl'));
+assert.ok(status.uiLaunch.health.landedArtifactPaths.includes('agent-runs/demo/collected/apply-ledger/apply-ledger.json'));
+assert.ok(status.uiLaunch.shortcuts.some((item) => item.includes('--collection')));
+assert.ok(status.uiLaunch.shortcuts.some((item) => item.includes('Equals-form')));
+assert.ok(status.uiLaunch.argumentForms.includes('--run=<path>'));
+assert.ok(status.uiLaunch.argumentForms.includes('--collection=<path>'));
+const detectedRun = status.uiLaunch.detected.find((item) => item.kind === 'run' && item.path === 'agent-runs/demo');
+assert.ok(detectedRun);
+assert.equal(detectedRun.health, 'active-artifacts');
+assert.equal(detectedRun.dataSource, '--run agent-runs/demo');
+assert.equal(detectedRun.dashboardUrl, 'http://127.0.0.1:<assigned-port>/');
+assert.ok(detectedRun.activeArtifacts.includes('agent-runs/demo/codex-events.jsonl'));
+assert.ok(status.uiLaunch.detected.some((item) =>
+  item.kind === 'run' &&
+  item.path === 'agent-runs/demo' &&
+  item.command === 'loom ui agent-runs/demo' &&
+  item.explicitCommand === 'loom ui --run agent-runs/demo'
+));
+const detectedCollection = status.uiLaunch.detected.find((item) => item.kind === 'collection' && item.path === 'agent-runs/demo/collected');
+assert.ok(detectedCollection);
+assert.equal(detectedCollection.health, 'attention');
+assert.equal(detectedCollection.activeJobs, 0);
+assert.equal(detectedCollection.landed, 1);
+assert.equal(detectedCollection.applied, 1);
+assert.equal(detectedCollection.committed, 0);
+assert.equal(detectedCollection.skipped, 0);
+assert.equal(detectedCollection.failed, 1);
+assert.equal(detectedCollection.usefulPatchCount, 2);
+assert.equal(detectedCollection.dataSource, '--collection agent-runs/demo/collected');
+assert.equal(detectedCollection.dataSourcePath, 'agent-runs/demo/collected');
+assert.ok(detectedCollection.healthArtifacts.includes('agent-runs/demo/collected/compact-dashboard.json'));
+assert.ok(detectedCollection.landedArtifacts.includes('agent-runs/demo/collected/apply-ledger/apply-ledger.json'));
+assert.ok(status.uiLaunch.detected.some((item) =>
+  item.kind === 'collection' &&
+  item.path === 'agent-runs/demo/collected' &&
+  item.dashboardCommand === 'loom swarm dashboard agent-runs/demo/collected' &&
+  item.explicitCommand === 'loom ui --collection agent-runs/demo/collected'
+));
 const capabilities = JSON.parse(run('capabilities', '--json'));
 assert.equal(capabilities.ok, true);
 assert.ok(capabilities.nativeCommands.some((item) => item.command === 'scan'));
 assert.ok(capabilities.delegates.some((item) => item.command === 'lang' && item.available));
 assert.ok(capabilities.delegates.some((item) => item.command === 'swarm' && item.available));
+assert.ok(capabilities.delegates.some((item) => item.command === 'ui' && item.available));
 const frontierDelegate = capabilities.delegates.find((item) => item.command === 'frontier');
 assert.equal(frontierDelegate.required, true);
 assert.equal(frontierDelegate.available, true);
 assert.equal(frontierDelegate.resolution, 'package-bin');
 assert.equal(frontierDelegate.pathRequired, false);
+const uiDelegate = capabilities.delegates.find((item) => item.command === 'ui');
+assert.equal(uiDelegate.required, true);
+assert.equal(uiDelegate.pathRequired, false);
 const doctor = JSON.parse(run('doctor', '--json'));
 assert.equal(doctor.ok, true);
 assert.deepEqual(doctor.missing, []);
@@ -87,6 +188,7 @@ assert.equal(typeof api.scanLoomProject, 'function');
 assert.equal(typeof api.readLoomCapabilities, 'function');
 assert.equal(api.isDelegateCommand('lang'), true);
 assert.equal(api.isDelegateCommand('frontier'), true);
+assert.equal(api.isDelegateCommand('ui'), true);
 
 const langHelp = run('lang', '--help');
 assert.match(langHelp, /frontier-lang/);
@@ -94,6 +196,49 @@ const swarmHelp = run('swarm', 'help');
 assert.match(swarmHelp, /frontier-swarm/);
 const frontierHelp = run('frontier', 'help');
 assert.match(frontierHelp, /frontier <command>/);
+const uiHelp = run('ui', '--help');
+assert.match(uiHelp, /frontier-loom-ui/);
+const fakeSwarmCodex = path.join(root, 'fake-swarm-codex.mjs');
+fs.writeFileSync(fakeSwarmCodex, [
+  'const payload = { argv: process.argv.slice(2) };',
+  'process.stdout.write(JSON.stringify(payload) + "\\n");',
+  ''
+].join('\n'));
+const overrideEnv = { LOOM_DELEGATE_SWARM_CODEX_CLI: fakeSwarmCodex };
+const overrideCapabilities = JSON.parse(runWithEnv(overrideEnv, 'capabilities', '--json'));
+const overrideSwarmCodex = overrideCapabilities.delegates.find((item) => item.command === 'swarm-codex');
+assert.equal(overrideSwarmCodex.available, true);
+assert.equal(overrideSwarmCodex.resolution, 'env-cli');
+assert.equal(overrideSwarmCodex.cliPath, fakeSwarmCodex);
+const overrideDelegate = JSON.parse(runWithEnv(overrideEnv, 'swarm-codex', 'continue', '--collection', 'agent-runs/demo/collected'));
+assert.deepEqual(overrideDelegate.argv, ['continue', '--collection', 'agent-runs/demo/collected']);
+const fakeUi = path.join(root, 'fake-ui.mjs');
+fs.writeFileSync(fakeUi, [
+  'const payload = { argv: process.argv.slice(2) };',
+  'process.stdout.write(JSON.stringify(payload) + "\\n");',
+  ''
+].join('\n'));
+const uiOverrideEnv = { LOOM_DELEGATE_UI_CLI: fakeUi };
+const overrideUi = JSON.parse(runWithEnv(uiOverrideEnv, 'ui', '--run', 'agent-runs/demo'));
+assert.deepEqual(overrideUi.argv, ['--run', 'agent-runs/demo']);
+const overrideUiEqualsRun = JSON.parse(runWithEnv(uiOverrideEnv, 'ui', '--run=agent-runs/demo', '--port=4173', '--steering-out-dir=agent-runs/steering'));
+assert.deepEqual(overrideUiEqualsRun.argv, ['--run', 'agent-runs/demo', '--port', '4173', '--steering-out-dir', 'agent-runs/steering']);
+const overrideUiEqualsCollection = JSON.parse(runWithEnv(uiOverrideEnv, 'ui', '--collection=agent-runs/demo/collected', '--continuation=agent-runs/demo/continuation'));
+assert.deepEqual(overrideUiEqualsCollection.argv, ['--collection', 'agent-runs/demo/collected', '--continuation', 'agent-runs/demo/continuation']);
+const overrideUiBareRun = JSON.parse(runWithEnv(uiOverrideEnv, 'ui', 'agent-runs/demo', '--open'));
+assert.deepEqual(overrideUiBareRun.argv, ['--run', 'agent-runs/demo', '--open']);
+const overrideUiBareCollection = JSON.parse(runWithEnv(uiOverrideEnv, 'ui', '--port', '4173', 'agent-runs/demo/collected'));
+assert.deepEqual(overrideUiBareCollection.argv, ['--port', '4173', '--collection', 'agent-runs/demo/collected']);
+const overrideUiBareCollectionAfterEqualsPort = JSON.parse(runWithEnv(uiOverrideEnv, 'ui', '--port=4173', 'agent-runs/demo/collected'));
+assert.deepEqual(overrideUiBareCollectionAfterEqualsPort.argv, ['--port', '4173', '--collection', 'agent-runs/demo/collected']);
+const overrideSwarmDashboard = JSON.parse(runWithEnv(uiOverrideEnv, 'swarm', 'dashboard', 'agent-runs/demo/collected'));
+assert.deepEqual(overrideSwarmDashboard.argv, ['--collection', 'agent-runs/demo/collected']);
+const overrideSwarmDashboardEquals = JSON.parse(runWithEnv(uiOverrideEnv, 'swarm', 'dashboard', '--collection=agent-runs/demo/collected'));
+assert.deepEqual(overrideSwarmDashboardEquals.argv, ['--collection', 'agent-runs/demo/collected']);
+const overrideSwarmDashboardJson = JSON.parse(runWithEnv(uiOverrideEnv, 'swarm', 'dashboard', 'agent-runs/demo/collected/collection.json'));
+assert.deepEqual(overrideSwarmDashboardJson.argv, ['--collection', 'agent-runs/demo/collected/collection.json']);
+const overrideSwarmUi = JSON.parse(runWithEnv(uiOverrideEnv, 'swarm', 'ui', 'agent-runs/demo', '--open'));
+assert.deepEqual(overrideSwarmUi.argv, ['--run', 'agent-runs/demo', '--open']);
 const symlinkBin = path.join(root, 'loom-bin');
 fs.symlinkSync(cli, symlinkBin);
 const symlinkHelp = execFileSync(symlinkBin, ['help'], { cwd: root, encoding: 'utf8' });
@@ -101,6 +246,14 @@ assert.match(symlinkHelp, /semantic repo collaboration/);
 
 function run(...args) {
   return execFileSync(process.execPath, [cli, ...args], { cwd: root, encoding: 'utf8' });
+}
+
+function runWithEnv(env, ...args) {
+  return execFileSync(process.execPath, [cli, ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...process.env, ...env }
+  });
 }
 
 function snapshotTree(dir) {

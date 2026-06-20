@@ -12,6 +12,15 @@ export interface DelegateTarget {
   description: string;
 }
 
+export type DelegateResolution = 'env-cli' | 'env-package-root' | 'package-bin';
+
+export interface ResolvedDelegateTarget {
+  target: DelegateTarget;
+  cliPath: string;
+  packageRoot?: string;
+  resolution: DelegateResolution;
+}
+
 export const delegateTargets: Record<string, DelegateTarget> = {
   swarm: {
     packageName: '@shapeshift-labs/frontier-swarm-codex',
@@ -24,6 +33,12 @@ export const delegateTargets: Record<string, DelegateTarget> = {
     binName: 'frontier-swarm-codex',
     required: true,
     description: 'Explicit Frontier Swarm Codex adapter alias.'
+  },
+  ui: {
+    packageName: '@shapeshift-labs/frontier-loom-ui',
+    binName: 'frontier-loom-ui',
+    required: true,
+    description: 'Dark Loom dashboard for inspecting and steering swarm runs and collections.'
   },
   lang: {
     packageName: '@shapeshift-labs/frontier-lang-cli',
@@ -59,16 +74,28 @@ export function listDelegateTargets(): Array<{ command: string } & DelegateTarge
   return Object.entries(delegateTargets).map(([command, target]) => ({ command, ...target }));
 }
 
-export function resolveDelegateTarget(command: string): { target: DelegateTarget; cliPath: string } {
+export function resolveDelegateTarget(command: string): ResolvedDelegateTarget {
   const target = delegateTargets[command];
   if (!target) throw new Error(`unknown delegated command: ${command}`);
-  const packageRoot = findPackageRoot(target.packageName);
+  const cliOverride = readDelegateEnv(command, 'CLI');
+  if (cliOverride) {
+    const cliPath = path.resolve(cliOverride);
+    if (!fs.existsSync(cliPath)) throw new Error(`${delegateEnvName(command, 'CLI')} points to a missing file: ${cliPath}`);
+    return { target, cliPath, resolution: 'env-cli' };
+  }
+  const packageRootOverride = readDelegateEnv(command, 'PACKAGE_ROOT') ?? readDelegateEnv(command, 'ROOT');
+  const packageRoot = packageRootOverride ? path.resolve(packageRootOverride) : findPackageRoot(target.packageName);
   const packageJson = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')) as {
     bin?: string | Record<string, string>;
   };
   const bin = typeof packageJson.bin === 'string' ? packageJson.bin : packageJson.bin?.[target.binName];
   if (!bin) throw new Error(`${target.packageName} does not expose bin ${target.binName}`);
-  return { target, cliPath: path.join(packageRoot, bin) };
+  return {
+    target,
+    packageRoot,
+    cliPath: path.join(packageRoot, bin),
+    resolution: packageRootOverride ? 'env-package-root' : 'package-bin'
+  };
 }
 
 export async function runDelegateCommand(command: string, args: string[]): Promise<number> {
@@ -79,11 +106,27 @@ export async function runDelegateCommand(command: string, args: string[]): Promi
     process.stderr.write(delegateErrorMessage(command, error));
     return 1;
   }
+  const forwardedArgs = command === 'ui' ? normalizeLoomUiArgs(args) : args;
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [cliPath, ...args], { stdio: 'inherit' });
+    const child = spawn(process.execPath, [cliPath, ...forwardedArgs], { stdio: 'inherit' });
     child.on('error', reject);
     child.on('close', (code) => resolve(code ?? 1));
   });
+}
+
+export function normalizeLoomUiArgs(args: string[]): string[] {
+  const normalizedArgs = normalizeLoomUiOptionArgs(args);
+  if (normalizedArgs.length === 0 || hasExplicitLoomUiSource(normalizedArgs) || hasLoomUiHelpArg(normalizedArgs)) return normalizedArgs;
+  const targetIndex = firstLoomUiTargetIndex(normalizedArgs);
+  if (targetIndex === -1) return normalizedArgs;
+  const targetPath = normalizedArgs[targetIndex];
+  if (!targetPath) return normalizedArgs;
+  return [
+    ...normalizedArgs.slice(0, targetIndex),
+    inferLoomUiSourceFlag(targetPath),
+    targetPath,
+    ...normalizedArgs.slice(targetIndex + 1)
+  ];
 }
 
 function findPackageRoot(packageName: string): string {
@@ -101,9 +144,88 @@ function findPackageRoot(packageName: string): string {
   throw new Error(`could not find package root for ${packageName}`);
 }
 
+function readDelegateEnv(command: string, suffix: string): string | undefined {
+  const value = process.env[delegateEnvName(command, suffix)];
+  return value && value.trim().length ? value.trim() : undefined;
+}
+
+function delegateEnvName(command: string, suffix: string): string {
+  return `LOOM_DELEGATE_${command.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${suffix}`;
+}
+
 function delegateErrorMessage(command: string, error: unknown): string {
   const target = delegateTargets[command];
   const detail = error instanceof Error ? error.message : String(error);
   const installHint = target?.required === false ? `Install ${target.packageName} to enable loom ${command}.\n` : '';
   return `loom ${command} is unavailable: ${detail}\n${installHint}`;
+}
+
+function hasExplicitLoomUiSource(args: string[]): boolean {
+  return args.some((arg) =>
+    arg === '--run' ||
+    arg.startsWith('--run=') ||
+    arg === '--collection' ||
+    arg.startsWith('--collection=') ||
+    arg === '--continuation' ||
+    arg.startsWith('--continuation=')
+  );
+}
+
+function hasLoomUiHelpArg(args: string[]): boolean {
+  return args.includes('help') || args.includes('--help') || args.includes('-h');
+}
+
+function normalizeLoomUiOptionArgs(args: string[]): string[] {
+  const optionsWithValues = loomUiOptionsWithValues();
+  const normalized: string[] = [];
+  for (const arg of args) {
+    if (!arg.startsWith('--') || !arg.includes('=')) {
+      normalized.push(arg);
+      continue;
+    }
+    const separator = arg.indexOf('=');
+    const option = arg.slice(0, separator);
+    if (!optionsWithValues.has(option)) {
+      normalized.push(arg);
+      continue;
+    }
+    normalized.push(option, arg.slice(separator + 1));
+  }
+  return normalized;
+}
+
+function firstLoomUiTargetIndex(args: string[]): number {
+  const optionsWithValues = loomUiOptionsWithValues();
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (!arg) continue;
+    if (arg.startsWith('--')) {
+      const option = arg.includes('=') ? arg.slice(0, arg.indexOf('=')) : arg;
+      if (optionsWithValues.has(option) && !arg.includes('=')) index += 1;
+      continue;
+    }
+    if (arg.startsWith('-')) continue;
+    return index;
+  }
+  return -1;
+}
+
+function loomUiOptionsWithValues(): Set<string> {
+  return new Set([
+    '--cwd',
+    '--host',
+    '--port',
+    '--steering-out-dir',
+    '--steeringOutDir',
+    '--run',
+    '--collection',
+    '--continuation'
+  ]);
+}
+
+function inferLoomUiSourceFlag(targetPath: string): '--run' | '--collection' {
+  const normalized = targetPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const basename = normalized.slice(normalized.lastIndexOf('/') + 1).toLowerCase();
+  if (basename === 'collected' || basename === 'collection' || basename === 'collection.json') return '--collection';
+  return '--run';
 }

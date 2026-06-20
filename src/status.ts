@@ -2,6 +2,7 @@ import { abs, gitDirtyCount, packageVersion, pathExists, readJson, resolveRoot }
 import { readLoomConfig } from './config.js';
 import { inspectDelegates } from './capabilities.js';
 import { readHeadRef, readRef } from './store.js';
+import { loomStatusMessage, readUiLaunchStatus } from './status-ui.js';
 import type { LoomCommandResult, LoomGraph } from './types.js';
 
 const packageChecks = [
@@ -11,6 +12,7 @@ const packageChecks = [
   { name: '@shapeshift-labs/frontier-lang-compiler', required: true },
   { name: '@shapeshift-labs/frontier-swarm', required: true },
   { name: '@shapeshift-labs/frontier-swarm-codex', required: true },
+  { name: '@shapeshift-labs/frontier-loom-ui', required: true },
   { name: '@shapeshift-labs/frontier-framework', required: true }
 ];
 
@@ -24,10 +26,11 @@ export async function readLoomStatus(options: { root?: string } = {}): Promise<L
   const headObject = headRef ? await readRef(root, headRef).catch(() => undefined) : undefined;
   const packages = await readPackageVersions();
   const delegates = await inspectDelegates();
+  const uiLaunch = await readUiLaunchStatus(root);
   return {
     ok: configExists,
     ready: Boolean(config && graph),
-    message: configExists ? 'loom project detected' : 'missing loom.json',
+    message: configExists ? loomStatusMessage(uiLaunch) : 'missing loom.json',
     root,
     configPath: configExists ? abs(root, 'loom.json') : undefined,
     graphPath,
@@ -35,6 +38,7 @@ export async function readLoomStatus(options: { root?: string } = {}): Promise<L
     headRef,
     headObject,
     graphSummary: graph?.summary,
+    uiLaunch,
     packages,
     delegates
   };
