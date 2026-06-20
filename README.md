@@ -55,6 +55,7 @@ loom status --json
 loom snapshot -m "initial semantic graph"
 loom diff --json
 loom run-graph status my-run --json
+loom run-graph import-swarm agent-runs/my-run/collected/run-graph.json --run-id my-run
 loom project --to python
 loom capabilities
 loom version
@@ -132,12 +133,20 @@ such as `agent-runs/my-run` is stored as
 loom run-graph read [<run-id>] [--run-id <id>]
 loom run-graph status [<run-id>] [--run-id <id>] [--json]
 loom run-graph write-json <file|-> [--run-id <id>] [--json]
+loom run-graph import-swarm <file|-> [--run-id <id>] [--json]
 ```
 
 `read` prints the stored `loom.run-graph` JSON. `status` reports whether the
 graph file is missing, present, or present but invalid without surfacing a raw
 stack trace. `write-json` stores a JSON `loom.run-graph` document using the
-existing Loom run graph writer; pass `-` to read from stdin.
+existing Loom run graph writer; pass `-` to read from stdin. `import-swarm`
+normalizes a `frontier.swarm-codex.run-graph` artifact, such as
+`agent-runs/<run>/collected/run-graph.json`, into Loom's durable
+`.loom/graph/runs/` model. Imported graphs are stored as `loom.run-graph`
+documents with `source: "frontier-swarm-codex"` and `sourceMetadata` pointing
+back to the original artifact path/run directory. Native Loom graphs can use
+`source: "loom-native"`; `status --json` includes `sourceKind` so tools can
+distinguish native and imported graphs without parsing free-form metadata.
 
 ### `loom diff`
 
@@ -382,6 +391,8 @@ import {
   snapshotLoomProject,
   diffLoomProject,
   createLoomProjectionPlan,
+  importSwarmCodexRunGraph,
+  normalizeSwarmCodexRunGraph,
   readLoomRunGraph,
   readLoomCapabilities,
   runDelegateCommand,
@@ -411,6 +422,13 @@ await writeLoomRunGraph({
   }
 });
 const runGraph = await readLoomRunGraph({ runId: 'demo' });
+const imported = await importSwarmCodexRunGraph(swarmCodexRunGraphJson, {
+  runId: 'agent-runs/demo',
+  sourcePath: 'agent-runs/demo/collected/run-graph.json'
+});
+const normalized = normalizeSwarmCodexRunGraph(swarmCodexRunGraphJson, {
+  runId: 'agent-runs/demo'
+});
 const capabilities = await readLoomCapabilities();
 await runDelegateCommand('lang', ['import', 'src/app.ts', '--sidecar']);
 ```

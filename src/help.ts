@@ -6,7 +6,7 @@ Usage:
   loom scan [--json]
   loom status [--json]
   loom graph [--json]
-  loom run-graph read|status|write-json [args...] [--json]
+  loom run-graph read|status|write-json|import-swarm [args...] [--json]
   loom diff [--json]
   loom snapshot [-m <message>] [--json]
   loom cat-file <object-id> [--json]
@@ -31,6 +31,7 @@ Examples:
   loom run-graph status agent-runs/my-run --json
   loom run-graph read agent-runs/my-run
   loom run-graph write-json run-graph.json --run-id agent-runs/my-run
+  loom run-graph import-swarm agent-runs/my-run/collected/run-graph.json --run-id agent-runs/my-run
   loom project --to rust
   loom capabilities --json
   loom swarm collect --run agent-runs/my-run

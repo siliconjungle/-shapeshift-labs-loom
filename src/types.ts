@@ -116,9 +116,23 @@ export interface LoomRunGraph {
   runId?: string;
   planId?: string;
   source?: string;
+  sourceKind?: LoomRunGraphSourceKind;
+  sourceMetadata?: LoomRunGraphSourceMetadata;
   summary: LoomRunGraphSummary;
   graph: LoomRunJobGraph;
   metadata?: Record<string, JsonValue>;
+}
+
+export type LoomRunGraphSourceKind = 'loom-native' | 'frontier-swarm-codex' | string;
+
+export interface LoomRunGraphSourceMetadata {
+  kind: LoomRunGraphSourceKind;
+  artifactKind?: string;
+  artifactId?: string;
+  path?: string;
+  runDir?: string;
+  outDir?: string;
+  importedAt?: string;
 }
 
 export interface LoomRunGraphSummary {
@@ -156,6 +170,63 @@ export interface LoomRunGraphIssue {
 export interface LoomRunGraphOptions {
   root?: string;
   runId?: string;
+}
+
+export interface LoomSwarmCodexRunGraphImportOptions extends LoomRunGraphOptions {
+  sourcePath?: string;
+}
+
+export interface LoomRunGraphImportResult extends LoomCommandResult {
+  runId: string;
+  present: boolean;
+  source: string;
+  sourceKind: LoomRunGraphSourceKind;
+  graphSummary: LoomRunGraphSummary;
+}
+
+export interface LoomSwarmCodexRunGraphNode {
+  id: string;
+  kind: string;
+  label?: string;
+  jobId?: string;
+  taskId?: string;
+  lane?: string;
+  model?: string;
+  computeId?: string;
+  modelTier?: string;
+  bucket?: string;
+  status?: string;
+  outcome?: string;
+  path?: string;
+  generatedAt?: number;
+  refs?: Record<string, string>;
+  data?: Record<string, unknown>;
+}
+
+export interface LoomSwarmCodexRunGraphEdge {
+  id: string;
+  kind: string;
+  from: string;
+  to: string;
+  label?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface LoomSwarmCodexRunGraph {
+  kind: 'frontier.swarm-codex.run-graph';
+  version: 1;
+  id: string;
+  generatedAt: number;
+  runDir: string;
+  outDir: string;
+  nodes: LoomSwarmCodexRunGraphNode[];
+  edges: LoomSwarmCodexRunGraphEdge[];
+  indexes: {
+    byKind: Record<string, string[]>;
+    byJobId: Record<string, string[]>;
+    byTaskId: Record<string, string[]>;
+  };
+  summary: Record<string, JsonValue>;
 }
 
 export interface LoomInitOptions {

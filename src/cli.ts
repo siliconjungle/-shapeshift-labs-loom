@@ -10,13 +10,19 @@ import { printResult } from './output.js';
 import { initLoomProject } from './init.js';
 import { scanLoomProject } from './scan.js';
 import { readLoomStatus, doctorLoomProject } from './status.js';
-import { readLoomGraph, readLoomRunGraph, writeLoomRunGraph } from './graph.js';
+import {
+  importSwarmCodexRunGraph,
+  loomRunGraphSourceKind,
+  readLoomGraph,
+  readLoomRunGraph,
+  writeLoomRunGraph
+} from './graph.js';
 import { diffLoomProject } from './diff.js';
 import { createLoomProjectionPlan } from './project.js';
 import { catLoomObject, snapshotLoomProject } from './snapshot.js';
 import { runSwarmCommand } from './swarm.js';
 import { isDelegateCommand, runDelegateCommand } from './delegate.js';
-import type { LoomCommandResult, LoomLanguage, LoomRunGraph } from './types.js';
+import type { LoomCommandResult, LoomLanguage, LoomRunGraph, LoomSwarmCodexRunGraph } from './types.js';
 
 export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> {
   const command = argv[0] ?? 'help';
@@ -106,6 +112,18 @@ async function runLoomRunGraphCommand(args: CliArgs, json: boolean): Promise<num
     }, json);
     return 0;
   }
+  if (subcommand === 'import-swarm' || subcommand === 'import-swarm-codex') {
+    const input = args._[1] ?? stringArg(args.input);
+    if (!input) throw new Error('run-graph import-swarm requires <file|->');
+    const graph = await readJsonInput<LoomSwarmCodexRunGraph>(input);
+    const targetRunId = runGraphRunId(args, 2);
+    printResult(await importSwarmCodexRunGraph(graph, {
+      root: stringArg(args.root),
+      runId: targetRunId,
+      sourcePath: input === '-' ? 'stdin' : input
+    }), json);
+    return 0;
+  }
   throw new Error(`unknown run-graph command: ${subcommand}`);
 }
 
@@ -138,6 +156,7 @@ async function readLoomRunGraphStatus(options: { root?: string; runId?: string }
 
   try {
     const graph = await readLoomRunGraph(options);
+    const sourceKind = loomRunGraphSourceKind(graph);
     return {
       ok: true,
       message: `found loom run graph ${graph.runId ?? runId}`,
@@ -145,7 +164,9 @@ async function readLoomRunGraphStatus(options: { root?: string; runId?: string }
       runId: graph.runId ?? runId,
       present: true,
       planId: graph.planId,
-      source: graph.source,
+      source: graph.source ?? sourceKind,
+      sourceKind,
+      sourceMetadata: graph.sourceMetadata,
       graphSummary: graph.summary
     };
   } catch (error) {
@@ -164,8 +185,12 @@ function runGraphRunId(args: CliArgs, positionalIndex: number): string | undefin
 }
 
 async function readRunGraphJson(input: string): Promise<LoomRunGraph> {
-  if (input === '-') return JSON.parse(fs.readFileSync(0, 'utf8')) as LoomRunGraph;
-  return readJson<LoomRunGraph>(input);
+  return readJsonInput<LoomRunGraph>(input);
+}
+
+async function readJsonInput<T = unknown>(input: string): Promise<T> {
+  if (input === '-') return JSON.parse(fs.readFileSync(0, 'utf8')) as T;
+  return readJson<T>(input);
 }
 
 function loomRunGraphFileName(runId = 'current'): string {
@@ -180,11 +205,13 @@ Usage:
   loom run-graph read [<run-id>] [--run-id <id>]
   loom run-graph status [<run-id>] [--run-id <id>] [--json]
   loom run-graph write-json <file|-> [--run-id <id>] [--json]
+  loom run-graph import-swarm <file|-> [--run-id <id>] [--json]
 
 Examples:
   loom run-graph status agent-run-2026 --json
   loom run-graph read agent-run-2026
   loom run-graph write-json run-graph.json --run-id agent-run-2026
+  loom run-graph import-swarm agent-runs/my-run/collected/run-graph.json --run-id agent-runs/my-run
 `;
 }
 
