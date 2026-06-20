@@ -2,5 +2,25 @@
   "maxLines": 320,
   "maxCharacters": 18000,
   "sourceGlobs": ["src/**/*.ts", "test/**/*.mjs", "scripts/**/*.mjs"],
-  "ignoreGlobs": ["dist/**", "node_modules/**"]
+  "ignoreGlobs": ["dist/**", "node_modules/**"],
+  "limitOverrides": [
+    {
+      "path": "src/graph.ts",
+      "maxLines": 960,
+      "maxCharacters": 38000,
+      "reason": "Run graph import, typed decision graph normalization, and chunk helper surface share one public graph module."
+    },
+    {
+      "path": "src/types.ts",
+      "maxLines": 760,
+      "maxCharacters": 32000,
+      "reason": "Single exported type barrel for Loom config, source graph, run graph, and typed decision graph contracts."
+    },
+    {
+      "path": "test/smoke.mjs",
+      "maxLines": 1100,
+      "maxCharacters": 46000,
+      "reason": "End-to-end CLI/API smoke oracle covers the package public surface and generated dist exports."
+    }
+  ]
 }

@@ -198,10 +198,49 @@ assert.equal(typeof api.normalizeSwarmCodexRunGraph, 'function');
 assert.equal(typeof api.normalizeSwarmCodexLiveRunGraphEvents, 'function');
 assert.equal(typeof api.parseSwarmCodexRunGraphInput, 'function');
 assert.equal(typeof api.importSwarmCodexRunGraph, 'function');
+assert.equal(typeof api.buildRunGraphChainChunk, 'function');
+assert.equal(typeof api.buildRunGraphForkChunk, 'function');
+assert.equal(typeof api.buildRunGraphJoinChunk, 'function');
+assert.equal(typeof api.buildRunGraphPatternChunk, 'function');
+assert.equal(typeof api.createLoomRunGraphPanelRecords, 'function');
 assert.equal(typeof api.readLoomCapabilities, 'function');
 assert.equal(api.isDelegateCommand('lang'), true);
 assert.equal(api.isDelegateCommand('frontier'), true);
 assert.equal(api.isDelegateCommand('ui'), true);
+const typeDeclarations = fs.readFileSync(path.resolve('dist/index.d.ts'), 'utf8');
+for (const exportedType of [
+  'LoomDecisionGraph',
+  'LoomDecisionGraphNode',
+  'LoomDecisionGraphNodeKind',
+  'LoomDecisionGraphEdge',
+  'LoomDecisionGraphEvent',
+  'LoomDecisionGraphSnapshot',
+  'LoomEvidenceKind',
+  'LoomEvidenceRecord',
+  'LoomGateRecord',
+  'LoomMergeAdmissionStatus',
+  'LoomMergeAdmissionReasonCode',
+  'LoomSemanticChangeRecord',
+  'LoomMergeCandidateRecord',
+  'LoomTournamentRecord',
+  'LoomTournamentCandidateRecord',
+  'LoomPanelRecord',
+  'LoomPanelProjectionRecord',
+  'LoomPatchEventRecord',
+  'LoomReplayRecord',
+  'LoomImprovementLoopRecord',
+  'LoomRunGraphChunkKind',
+  'LoomRunGraphChunkTemplate',
+  'LoomRunGraphProjections',
+  'LoomRunGraphTypedCounts',
+  'LoomRunGraphTypedNode',
+  'LoomRunGraphTypedEdge',
+  'LoomRunGraphEvent',
+  'LoomRunGraphSnapshot',
+  'LoomSourceSpan'
+]) {
+  assert.match(typeDeclarations, new RegExp(`\\b${exportedType}\\b`));
+}
 const sourceGraphViaApi = await api.readLoomGraph({ root });
 assert.equal(sourceGraphViaApi.kind, 'loom.graph');
 assert.equal(sourceGraphViaApi.summary.files, 5);
@@ -237,6 +276,45 @@ const runGraph = {
 const runGraphPath = await api.writeLoomRunGraph(runGraph, { root });
 assert.equal(path.relative(root, runGraphPath).replaceAll(path.sep, '/'), '.loom/graph/runs/demo_run_graph.json');
 assert.deepEqual(await api.readLoomRunGraph({ root, runId: 'demo/run:graph' }), runGraph);
+const typedRunGraph = createTypedRunGraphFixture(root);
+const typedRunGraphPath = await api.writeLoomRunGraph(typedRunGraph, { root });
+assert.equal(path.relative(root, typedRunGraphPath).replaceAll(path.sep, '/'), '.loom/graph/runs/typed_run_graph.json');
+const typedRunGraphRead = await api.readLoomRunGraph({ root, runId: 'typed/run:graph' });
+assert.deepEqual(typedRunGraphRead, typedRunGraph);
+assert.deepEqual(typedRunGraphRead.decisionGraph.nodes.map((node) => node.kind), [
+  'intent',
+  'task',
+  'worker',
+  'candidate',
+  'evidence',
+  'gate',
+  'decision',
+  'merge',
+  'replay',
+  'rsi'
+]);
+assert.equal(typedRunGraphRead.decisionGraph.edges.length, 9);
+assert.equal(typedRunGraphRead.decisionGraph.events[0].type, 'typed.graph.recorded');
+assert.equal(typedRunGraphRead.decisionGraph.snapshots[0].summary.nodes, 10);
+assert.deepEqual(typedRunGraphRead.decisionGraph.records.map((record) => record.kind), [
+  'loom.decision-graph.evidence',
+  'loom.decision-graph.gate',
+  'loom.decision-graph.semantic-change',
+  'loom.decision-graph.merge-candidate',
+  'loom.decision-graph.tournament',
+  'loom.decision-graph.panel',
+  'loom.decision-graph.panel-projection',
+  'loom.decision-graph.patch-event',
+  'loom.decision-graph.replay',
+  'loom.decision-graph.improvement-loop'
+]);
+const chainChunk = api.buildRunGraphChainChunk(['intent:typed', 'task:typed', 'worker:typed']);
+assert.equal(chainChunk.kind, 'loom.run-graph.chunk-template');
+assert.equal(chainChunk.chunkKind, 'chain');
+assert.deepEqual(chainChunk.entryNodes, ['intent:typed']);
+assert.deepEqual(chainChunk.exitNodes, ['worker:typed']);
+const mergeGateChunk = api.buildRunGraphPatternChunk('merge-gate', ['candidate:typed', 'gate:typed', 'merge:typed']);
+assert.equal(mergeGateChunk.chunkKind, 'merge-gate');
 const missingRunGraphStatus = JSON.parse(run('run-graph', 'status', 'missing/run', '--json'));
 assert.equal(missingRunGraphStatus.ok, false);
 assert.equal(missingRunGraphStatus.present, false);
@@ -287,8 +365,27 @@ assert.equal(normalizedSwarmRunGraph.sourceMetadata.artifactKind, 'frontier.swar
 assert.equal(normalizedSwarmRunGraph.sourceMetadata.path, 'agent-runs/demo/collected/run-graph.json');
 assert.equal(normalizedSwarmRunGraph.summary.nodes, 4);
 assert.equal(normalizedSwarmRunGraph.summary.edges, 3);
+assert.deepEqual(normalizedSwarmRunGraph.summary.typedCounts, {
+  intents: 1,
+  tasks: 1,
+  workers: 1,
+  candidates: 1
+});
 assert.deepEqual(normalizedSwarmRunGraph.graph.dependenciesByJobId['candidate:job-a'], ['job:job-a']);
 assert.deepEqual(normalizedSwarmRunGraph.graph.dependentsByJobId['task:task-a'], ['job:job-a']);
+assert.equal(normalizedSwarmRunGraph.decisionGraph.kind, 'loom.decision-graph');
+assert.deepEqual(new Set(normalizedSwarmRunGraph.decisionGraph.nodes.map((node) => node.kind)), new Set([
+  'candidate',
+  'intent',
+  'task',
+  'worker'
+]));
+assert.equal(normalizedSwarmRunGraph.decisionGraph.edges.length, 3);
+assert.equal(normalizedSwarmRunGraph.decisionGraph.events.length, 0);
+assert.equal(normalizedSwarmRunGraph.decisionGraph.snapshots[0].summary.nodes, 4);
+assert.ok(normalizedSwarmRunGraph.decisionGraph.records.some((record) => record.kind === 'loom.decision-graph.merge-candidate'));
+assert.equal(normalizedSwarmRunGraph.projections.panels.length, 7);
+assert.ok(normalizedSwarmRunGraph.projections.panels.every((panel) => !('status' in panel)));
 assert.equal(normalizedSwarmRunGraph.metadata.swarmCodex.summary.jobCount, 1);
 fs.writeFileSync(path.join(root, 'swarm-run-graph.json'), `${JSON.stringify(swarmRunGraph, null, 2)}\n`);
 const importSwarmCli = JSON.parse(run('run-graph', 'import-swarm', 'swarm-run-graph.json', '--run-id', 'imported/swarm', '--json'));
@@ -302,7 +399,13 @@ assert.deepEqual(importSwarmCli.graphSummary, {
   edges: 3,
   roots: 1,
   leaves: 1,
-  issues: 0
+  issues: 0,
+  typedCounts: {
+    intents: 1,
+    tasks: 1,
+    workers: 1,
+    candidates: 1
+  }
 });
 const importedSwarmStatus = JSON.parse(run('run-graph', 'status', 'imported/swarm', '--json'));
 assert.equal(importedSwarmStatus.ok, true);
@@ -350,6 +453,12 @@ assert.equal(normalizedLiveRunGraph.summary.nodes, 4);
 assert.equal(normalizedLiveRunGraph.summary.edges, 3);
 assert.deepEqual(normalizedLiveRunGraph.graph.roots, ['run:demo']);
 assert.deepEqual(normalizedLiveRunGraph.graph.leaves, ['candidate:job-a']);
+assert.equal(normalizedLiveRunGraph.decisionGraph.events.length, liveRunGraphEvents.length);
+assert.equal(normalizedLiveRunGraph.decisionGraph.snapshots[0].summary.events, liveRunGraphEvents.length);
+assert.ok(normalizedLiveRunGraph.decisionGraph.events.some((event) =>
+  event.type === 'job.finished' &&
+  event.nodeIds.includes('candidate:job-a')
+));
 assert.equal(normalizedLiveRunGraph.metadata.swarmCodexLive.eventCount, liveRunGraphEvents.length);
 fs.writeFileSync(path.join(root, 'live-run-graph-events.jsonl'), liveJsonl);
 const importLiveCli = JSON.parse(run('run-graph', 'import-swarm', 'live-run-graph-events.jsonl', '--run-id', 'imported/live', '--json'));
@@ -365,7 +474,13 @@ assert.deepEqual(importLiveCli.graphSummary, {
   edges: 3,
   roots: 1,
   leaves: 1,
-  issues: 0
+  issues: 0,
+  typedCounts: {
+    intents: 1,
+    tasks: 1,
+    workers: 1,
+    candidates: 1
+  }
 });
 const importedLiveStatus = JSON.parse(run('run-graph', 'status', 'imported/live', '--json'));
 assert.equal(importedLiveStatus.ok, true);
@@ -450,6 +565,253 @@ function runWithEnv(env, ...args) {
 
 function relativeToRoot(file) {
   return path.relative(fs.realpathSync(root), file).replaceAll(path.sep, '/');
+}
+
+function createTypedRunGraphFixture(rootDir) {
+  const generatedAt = new Date(0).toISOString();
+  const nodeKinds = ['intent', 'task', 'worker', 'candidate', 'evidence', 'gate', 'decision', 'merge', 'replay', 'rsi'];
+  const nodeIds = nodeKinds.map((kind) => `${kind}:typed`);
+  const typedNodes = nodeKinds.map((kind, index) => ({
+    id: nodeIds[index],
+    kind,
+    label: `${kind} typed node`,
+    taskId: 'typed-task',
+    jobId: 'typed-job',
+    lane: 'graph-types',
+    status: 'completed',
+    createdAt: generatedAt,
+    updatedAt: generatedAt,
+    ...(kind === 'worker' ? { workerId: 'typed-job' } : {}),
+    ...(kind === 'candidate' ? { candidateId: 'typed-candidate', outcome: 'ready-to-apply' } : {}),
+    ...(kind === 'evidence' ? { path: 'evidence/typed.json' } : {})
+  }));
+  const typedEdges = nodeIds.slice(1).map((to, index) => {
+    const from = nodeIds[index];
+    return {
+      id: `edge:${from}->${to}`,
+      kind: 'contains',
+      from,
+      to
+    };
+  });
+  const dependentsByJobId = Object.fromEntries(nodeIds.map((id) => [id, []]));
+  const dependenciesByJobId = Object.fromEntries(nodeIds.map((id) => [id, []]));
+  for (const edge of typedEdges) {
+    dependentsByJobId[edge.from].push(edge.to);
+    dependenciesByJobId[edge.to].push(edge.from);
+  }
+  const records = [
+    {
+      kind: 'loom.decision-graph.evidence',
+      id: 'record:evidence:typed',
+      nodeId: 'evidence:typed',
+      taskId: 'typed-task',
+      jobId: 'typed-job',
+      lane: 'graph-types',
+      status: 'completed',
+      path: 'evidence/typed.json',
+      artifactKind: 'json'
+    },
+    {
+      kind: 'loom.decision-graph.gate',
+      id: 'record:gate:typed',
+      nodeId: 'gate:typed',
+      taskId: 'typed-task',
+      jobId: 'typed-job',
+      lane: 'graph-types',
+      status: 'passed',
+      command: 'node test/smoke.mjs',
+      required: true,
+      exitCode: 0,
+      evidenceIds: ['record:evidence:typed']
+    },
+    {
+      kind: 'loom.decision-graph.semantic-change',
+      id: 'record:semantic-change:typed',
+      nodeId: 'merge:typed',
+      taskId: 'typed-task',
+      lane: 'graph-types',
+      status: 'completed',
+      files: ['src/types.ts'],
+      symbols: ['LoomDecisionGraph'],
+      editScriptStatus: 'clean',
+      mergeReadiness: 'ready'
+    },
+    {
+      kind: 'loom.decision-graph.merge-candidate',
+      id: 'record:merge-candidate:typed',
+      nodeId: 'candidate:typed',
+      taskId: 'typed-task',
+      jobId: 'typed-job',
+      lane: 'graph-types',
+      status: 'accepted',
+      candidateId: 'typed-candidate',
+      sourceNodeId: 'candidate:typed',
+      disposition: 'ready-to-apply',
+      evidenceIds: ['record:evidence:typed'],
+      gateIds: ['record:gate:typed'],
+      semanticChangeIds: ['record:semantic-change:typed']
+    },
+    {
+      kind: 'loom.decision-graph.tournament',
+      id: 'record:tournament:typed',
+      nodeId: 'decision:typed',
+      taskId: 'typed-task',
+      lane: 'graph-types',
+      status: 'completed',
+      candidateIds: ['typed-candidate'],
+      winnerCandidateId: 'typed-candidate',
+      criteria: ['tests', 'contract']
+    },
+    {
+      kind: 'loom.decision-graph.panel',
+      id: 'record:panel:typed',
+      nodeId: 'decision:typed',
+      taskId: 'typed-task',
+      lane: 'graph-types',
+      status: 'completed',
+      reviewerIds: ['reviewer:typed'],
+      decisionIds: ['decision:typed'],
+      quorum: 1,
+      result: 'accepted'
+    },
+    {
+      kind: 'loom.decision-graph.panel-projection',
+      id: 'record:panel-projection:typed',
+      nodeId: 'decision:typed',
+      taskId: 'typed-task',
+      lane: 'graph-types',
+      panelKind: 'merge',
+      sourceNodeIds: ['candidate:typed', 'merge:typed'],
+      sourceEdgeIds: ['edge:candidate:typed->evidence:typed']
+    },
+    {
+      kind: 'loom.decision-graph.patch-event',
+      id: 'record:patch-event:typed',
+      nodeId: 'merge:typed',
+      taskId: 'typed-task',
+      lane: 'graph-types',
+      eventId: 'patch:typed',
+      operation: 'apply',
+      path: 'src/types.ts',
+      basis: 'before',
+      nextBasis: 'after',
+      patchPath: 'evidence/changes.patch',
+      actor: 'coordinator',
+      occurredAt: generatedAt,
+      result: 'applied'
+    },
+    {
+      kind: 'loom.decision-graph.replay',
+      id: 'record:replay:typed',
+      nodeId: 'replay:typed',
+      taskId: 'typed-task',
+      lane: 'graph-types',
+      status: 'completed',
+      sourceRunId: 'source-run',
+      targetRunId: 'target-run',
+      result: 'converged'
+    },
+    {
+      kind: 'loom.decision-graph.improvement-loop',
+      id: 'record:improvement-loop:typed',
+      nodeId: 'rsi:typed',
+      taskId: 'typed-task',
+      lane: 'graph-types',
+      status: 'completed',
+      loopId: 'rsi:typed',
+      iteration: 1,
+      objective: 'improve merge readiness',
+      inputCandidateIds: ['typed-candidate'],
+      outputCandidateIds: ['typed-candidate'],
+      acceptedChangeIds: ['record:semantic-change:typed']
+    }
+  ];
+  return {
+    kind: 'loom.run-graph',
+    version: 1,
+    generatedAt,
+    root: rootDir,
+    runId: 'typed/run:graph',
+    planId: 'typed-plan',
+    source: 'loom-native',
+    sourceKind: 'loom-native',
+    summary: {
+      nodes: nodeIds.length,
+      edges: typedEdges.length,
+      roots: 1,
+      leaves: 1,
+      issues: 0
+    },
+    graph: {
+      nodes: nodeIds,
+      edges: typedEdges.map((edge) => ({ from: edge.from, to: edge.to, type: edge.kind })),
+      dependentsByJobId,
+      dependenciesByJobId,
+      roots: [nodeIds[0]],
+      leaves: [nodeIds.at(-1)],
+      issues: []
+    },
+    decisionGraph: {
+      kind: 'loom.decision-graph',
+      version: 1,
+      generatedAt,
+      nodes: typedNodes,
+      edges: typedEdges,
+      events: [{
+        kind: 'loom.decision-graph.event',
+        version: 1,
+        id: 'event:typed',
+        type: 'typed.graph.recorded',
+        generatedAt,
+        runId: 'typed/run:graph',
+        taskId: 'typed-task',
+        jobId: 'typed-job',
+        lane: 'graph-types',
+        nodeIds,
+        edgeIds: typedEdges.map((edge) => edge.id),
+        data: { root: rootDir }
+      }],
+      snapshots: [{
+        kind: 'loom.decision-graph.snapshot',
+        version: 1,
+        id: 'snapshot:typed',
+        generatedAt,
+        label: 'typed fixture',
+        nodeIds,
+        edgeIds: typedEdges.map((edge) => edge.id),
+        eventIds: ['event:typed'],
+        summary: {
+          nodes: typedNodes.length,
+          edges: typedEdges.length,
+          events: 1,
+          records: records.length
+        }
+      }],
+      indexes: {
+        byNodeKind: Object.fromEntries(typedNodes.map((node) => [node.kind, [node.id]])),
+        byEdgeKind: {
+          contains: typedEdges.map((edge) => edge.id)
+        },
+        byTaskId: {
+          'typed-task': nodeIds
+        },
+        byJobId: {
+          'typed-job': nodeIds
+        },
+        byLane: {
+          'graph-types': nodeIds
+        }
+      },
+      records,
+      metadata: {
+        fixture: true
+      }
+    },
+    metadata: {
+      lane: 'graph-types'
+    }
+  };
 }
 
 function createSwarmRunGraphFixture(rootDir) {

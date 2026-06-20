@@ -153,6 +153,32 @@ Live JSONL imports also record `sourceMetadata.eventCount` and
 "loom-native"`; `status --json` includes `sourceKind` so tools can distinguish
 native and imported graphs without parsing free-form metadata.
 
+`loom.run-graph` also accepts an optional `decisionGraph` section for typed
+durable decision graphs. The legacy `graph.nodes: string[]` and dependency
+indexes stay compatible for older job graph readers, while `decisionGraph`
+stores typed nodes, edges, events, snapshots, indexes, and records for evidence,
+gates, semantic changes, merge candidates, tournaments, panels, replays, and
+improvement loops. Built-in node kinds include `intent`, `task`, `worker`,
+`candidate`, `evidence`, `gate`, `decision`, `merge`, `replay`, and `rsi`.
+Swarm imports populate this section alongside the legacy graph.
+
+Typed summaries include `summary.typedCounts` when imported data contains
+recognizable intents, tasks, workers, candidates, gates, evidence, merges,
+panels, tournaments, RSI loops, or semantic changes. `status` prints a compact
+`typed graph:` line for non-JSON output. The JavaScript API also exports
+projection and chunk helpers so UI/read-models can be derived from graph truth
+instead of becoming separate sources of truth:
+
+```ts
+const chain = buildRunGraphChainChunk(['intent:demo', 'task:demo', 'worker:demo']);
+const mergeGate = buildRunGraphPatternChunk('merge-gate', [
+  'candidate:demo',
+  'gate:tests',
+  'merge:demo'
+]);
+const panels = createLoomRunGraphPanelRecords(runGraph.decisionGraph);
+```
+
 ### `loom diff`
 
 Compares the saved graph with the current source tree without mutating `.loom/`.
@@ -400,6 +426,9 @@ import {
   normalizeSwarmCodexLiveRunGraphEvents,
   normalizeSwarmCodexRunGraph,
   parseSwarmCodexRunGraphInput,
+  buildRunGraphChainChunk,
+  buildRunGraphPatternChunk,
+  createLoomRunGraphPanelRecords,
   readLoomRunGraph,
   readLoomCapabilities,
   runDelegateCommand,

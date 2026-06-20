@@ -1,4 +1,20 @@
-import type { LoomCommandResult, LoomGraph } from './types.js';
+import type { LoomCommandResult, LoomGraph, LoomRunGraphTypedCounts } from './types.js';
+
+const TYPED_COUNT_LABELS: Array<[keyof LoomRunGraphTypedCounts, string]> = [
+  ['intents', 'intents'],
+  ['tasks', 'tasks'],
+  ['workers', 'workers'],
+  ['candidates', 'candidates'],
+  ['evidence', 'evidence'],
+  ['gates', 'gates'],
+  ['decisions', 'decisions'],
+  ['merges', 'merges'],
+  ['replay', 'replay'],
+  ['panels', 'panels'],
+  ['tournaments', 'tournaments'],
+  ['rsiLoops', 'rsi loops'],
+  ['semanticChanges', 'semantic changes']
+];
 
 export function printResult(value: unknown, json: boolean): void {
   if (json) {
@@ -33,7 +49,11 @@ function printKnownFields(result: LoomCommandResult): void {
   if (typeof result.sourceKind === 'string') process.stdout.write(`source kind: ${result.sourceKind}\n`);
   if (typeof result.objectId === 'string') process.stdout.write(`object: ${result.objectId}\n`);
   if (typeof result.ref === 'string') process.stdout.write(`ref: ${result.ref}\n`);
-  if (result.graphSummary) process.stdout.write(`graph: ${JSON.stringify(result.graphSummary)}\n`);
+  if (result.graphSummary) {
+    process.stdout.write(`graph: ${JSON.stringify(result.graphSummary)}\n`);
+    const typedCounts = typedCountsFromSummary(result.graphSummary);
+    if (typedCounts) process.stdout.write(`typed graph: ${formatTypedCounts(typedCounts)}\n`);
+  }
   if (Array.isArray(result.missing)) process.stdout.write(`missing required: ${formatList(result.missing)}\n`);
   if (Array.isArray(result.optionalMissing)) process.stdout.write(`missing optional: ${formatList(result.optionalMissing)}\n`);
   if (Array.isArray(result.nativeCommands)) printCommandRows('native commands', result.nativeCommands);
@@ -57,6 +77,21 @@ function arrayCount(value: unknown): number {
 
 function formatList(value: unknown[]): string {
   return value.length ? value.map(String).join(', ') : 'none';
+}
+
+function typedCountsFromSummary(summary: unknown): LoomRunGraphTypedCounts | undefined {
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return undefined;
+  const typedCounts = (summary as { typedCounts?: unknown }).typedCounts;
+  if (!typedCounts || typeof typedCounts !== 'object' || Array.isArray(typedCounts)) return undefined;
+  return typedCounts as LoomRunGraphTypedCounts;
+}
+
+function formatTypedCounts(typedCounts: LoomRunGraphTypedCounts): string {
+  const values = TYPED_COUNT_LABELS.flatMap(([key, label]) => {
+    const value = typedCounts[key];
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? [`${label}=${value}`] : [];
+  });
+  return values.length ? values.join(', ') : 'none';
 }
 
 function printCommandRows(title: string, rows: unknown[]): void {

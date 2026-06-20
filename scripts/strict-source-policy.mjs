@@ -18,10 +18,11 @@ const failures = [];
 for (const file of unique) {
   const text = fs.readFileSync(file, 'utf8');
   const relative = path.relative(root, file).replaceAll(path.sep, '/');
+  const limits = limitsFor(relative);
   const lines = text.split(/\r?\n/).length;
-  if (lines > policy.maxLines) failures.push(`${relative}: ${lines} lines > ${policy.maxLines}`);
-  if (text.length > policy.maxCharacters) {
-    failures.push(`${relative}: ${text.length} chars > ${policy.maxCharacters}`);
+  if (lines > limits.maxLines) failures.push(`${relative}: ${lines} lines > ${limits.maxLines}`);
+  if (text.length > limits.maxCharacters) {
+    failures.push(`${relative}: ${text.length} chars > ${limits.maxCharacters}`);
   }
 }
 
@@ -51,4 +52,12 @@ function ignored(relative) {
     const prefix = glob.replace('/**', '');
     return relative === prefix || relative.startsWith(`${prefix}/`);
   });
+}
+
+function limitsFor(relative) {
+  const override = (policy.limitOverrides ?? []).find((item) => item && item.path === relative);
+  return {
+    maxLines: override?.maxLines ?? policy.maxLines,
+    maxCharacters: override?.maxCharacters ?? policy.maxCharacters
+  };
 }
