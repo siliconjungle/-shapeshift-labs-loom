@@ -37,7 +37,8 @@ assert.match(loomHelp, /loom run-graph read\|status\|write-json\|import-swarm/);
 const runGraphHelp = run('run-graph', 'help');
 assert.match(runGraphHelp, /loom run-graph - durable swarm run dependency graph helpers/);
 assert.match(runGraphHelp, /loom run-graph write-json <file\|->/);
-assert.match(runGraphHelp, /loom run-graph import-swarm <file\|->/);
+assert.match(runGraphHelp, /loom run-graph import-swarm <json-or-jsonl\|->/);
+assert.match(runGraphHelp, /live-run-graph-events\.jsonl/);
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected'), { recursive: true });
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected', 'apply-ledger'), { recursive: true });
 fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'codex-events.jsonl'), '{}\n');
@@ -194,6 +195,8 @@ assert.equal(typeof api.readLoomGraph, 'function');
 assert.equal(typeof api.readLoomRunGraph, 'function');
 assert.equal(typeof api.writeLoomRunGraph, 'function');
 assert.equal(typeof api.normalizeSwarmCodexRunGraph, 'function');
+assert.equal(typeof api.normalizeSwarmCodexLiveRunGraphEvents, 'function');
+assert.equal(typeof api.parseSwarmCodexRunGraphInput, 'function');
 assert.equal(typeof api.importSwarmCodexRunGraph, 'function');
 assert.equal(typeof api.readLoomCapabilities, 'function');
 assert.equal(api.isDelegateCommand('lang'), true);
@@ -325,6 +328,56 @@ assert.equal(path.relative(root, importSwarmApi.path).replaceAll(path.sep, '/'),
 const importedApiRead = await api.readLoomRunGraph({ root, runId: 'api/imported' });
 assert.equal(importedApiRead.sourceMetadata.path, 'live');
 assert.equal(importedApiRead.metadata.swarmCodex.summary.candidateCount, 1);
+const liveRunGraphEvents = createSwarmLiveRunGraphEventsFixture(root);
+const liveJsonl = liveRunGraphEvents.map((event) => JSON.stringify(event)).join('\n') + '\n';
+const parsedLiveRunGraphEvents = api.parseSwarmCodexRunGraphInput(liveJsonl);
+assert.equal(Array.isArray(parsedLiveRunGraphEvents), true);
+assert.equal(parsedLiveRunGraphEvents.length, liveRunGraphEvents.length);
+const normalizedLiveRunGraph = api.normalizeSwarmCodexLiveRunGraphEvents(parsedLiveRunGraphEvents, {
+  root,
+  runId: 'normalized/live',
+  sourcePath: 'agent-runs/demo/live-run-graph-events.jsonl'
+});
+assert.equal(normalizedLiveRunGraph.kind, 'loom.run-graph');
+assert.equal(normalizedLiveRunGraph.runId, 'normalized/live');
+assert.equal(normalizedLiveRunGraph.source, 'frontier-swarm-codex');
+assert.equal(normalizedLiveRunGraph.sourceKind, 'frontier-swarm-codex');
+assert.equal(normalizedLiveRunGraph.sourceMetadata.artifactKind, 'frontier.swarm-codex.live-run-graph-events');
+assert.equal(normalizedLiveRunGraph.sourceMetadata.path, 'agent-runs/demo/live-run-graph-events.jsonl');
+assert.equal(normalizedLiveRunGraph.sourceMetadata.eventCount, liveRunGraphEvents.length);
+assert.ok(normalizedLiveRunGraph.sourceMetadata.eventTypes.includes('job.finished'));
+assert.equal(normalizedLiveRunGraph.summary.nodes, 4);
+assert.equal(normalizedLiveRunGraph.summary.edges, 3);
+assert.deepEqual(normalizedLiveRunGraph.graph.roots, ['run:demo']);
+assert.deepEqual(normalizedLiveRunGraph.graph.leaves, ['candidate:job-a']);
+assert.equal(normalizedLiveRunGraph.metadata.swarmCodexLive.eventCount, liveRunGraphEvents.length);
+fs.writeFileSync(path.join(root, 'live-run-graph-events.jsonl'), liveJsonl);
+const importLiveCli = JSON.parse(run('run-graph', 'import-swarm', 'live-run-graph-events.jsonl', '--run-id', 'imported/live', '--json'));
+assert.equal(importLiveCli.ok, true);
+assert.equal(importLiveCli.runId, 'imported/live');
+assert.equal(importLiveCli.source, 'frontier-swarm-codex');
+assert.equal(importLiveCli.sourceKind, 'frontier-swarm-codex');
+assert.equal(importLiveCli.sourceMetadata.artifactKind, 'frontier.swarm-codex.live-run-graph-events');
+assert.equal(importLiveCli.sourceMetadata.eventCount, liveRunGraphEvents.length);
+assert.equal(relativeToRoot(importLiveCli.path), '.loom/graph/runs/imported_live.json');
+assert.deepEqual(importLiveCli.graphSummary, {
+  nodes: 4,
+  edges: 3,
+  roots: 1,
+  leaves: 1,
+  issues: 0
+});
+const importedLiveStatus = JSON.parse(run('run-graph', 'status', 'imported/live', '--json'));
+assert.equal(importedLiveStatus.ok, true);
+assert.equal(importedLiveStatus.sourceKind, 'frontier-swarm-codex');
+assert.equal(importedLiveStatus.sourceMetadata.path, 'live-run-graph-events.jsonl');
+assert.equal(importedLiveStatus.sourceMetadata.artifactKind, 'frontier.swarm-codex.live-run-graph-events');
+assert.equal(importedLiveStatus.sourceMetadata.eventCount, liveRunGraphEvents.length);
+const importedLiveRead = JSON.parse(run('run-graph', 'read', 'imported/live'));
+assert.equal(importedLiveRead.sourceKind, 'frontier-swarm-codex');
+assert.equal(importedLiveRead.sourceMetadata.eventTypes.length, 4);
+assert.equal(importedLiveRead.metadata.swarmCodex.summary.jobCount, 1);
+assert.equal(importedLiveRead.metadata.swarmCodexLive.eventCount, liveRunGraphEvents.length);
 const graphAfterRunGraph = JSON.parse(fs.readFileSync(path.join(root, '.loom', 'graph', 'current.json'), 'utf8'));
 assert.equal(graphAfterRunGraph.kind, 'loom.graph');
 assert.equal(graphAfterRunGraph.summary.files, 5);
@@ -481,6 +534,119 @@ function createSwarmRunGraphFixture(rootDir) {
       gateCount: 0
     }
   };
+}
+
+function createSwarmLiveRunGraphEventsFixture(rootDir) {
+  const runDir = path.join(rootDir, 'agent-runs', 'demo');
+  const outDir = path.join(runDir, 'collected');
+  return [
+    {
+      kind: 'frontier.swarm-codex.live-run-graph-event',
+      version: 1,
+      type: 'run.started',
+      runId: 'demo',
+      generatedAt: 0,
+      nodes: [{
+        id: 'run:demo',
+        kind: 'run',
+        label: 'demo',
+        path: outDir,
+        status: 'running',
+        generatedAt: 0,
+        data: { jobCount: 1 }
+      }],
+      data: { outDir, jobCount: 1 }
+    },
+    {
+      kind: 'frontier.swarm-codex.live-run-graph-event',
+      version: 1,
+      type: 'job.started',
+      runId: 'demo',
+      jobId: 'job-a',
+      taskId: 'task-a',
+      lane: 'loom',
+      generatedAt: 1,
+      nodes: [
+        {
+          id: 'task:task-a',
+          kind: 'task',
+          label: 'Task A',
+          taskId: 'task-a',
+          lane: 'loom',
+          generatedAt: 1
+        },
+        {
+          id: 'job:job-a',
+          kind: 'job',
+          label: 'Job A',
+          jobId: 'job-a',
+          taskId: 'task-a',
+          lane: 'loom',
+          status: 'running',
+          generatedAt: 1
+        }
+      ],
+      edges: [
+        { id: 'contains:run:demo->task:task-a', kind: 'contains', from: 'run:demo', to: 'task:task-a' },
+        { id: 'produces:task:task-a->job:job-a', kind: 'produces', from: 'task:task-a', to: 'job:job-a' }
+      ]
+    },
+    {
+      kind: 'frontier.swarm-codex.live-run-graph-event',
+      version: 1,
+      type: 'job.finished',
+      runId: 'demo',
+      jobId: 'job-a',
+      taskId: 'task-a',
+      lane: 'loom',
+      generatedAt: 2,
+      nodes: [
+        {
+          id: 'job:job-a',
+          kind: 'job',
+          label: 'Job A',
+          jobId: 'job-a',
+          taskId: 'task-a',
+          lane: 'loom',
+          status: 'completed',
+          generatedAt: 2
+        },
+        {
+          id: 'candidate:job-a',
+          kind: 'candidate',
+          label: 'Candidate A',
+          jobId: 'job-a',
+          taskId: 'task-a',
+          lane: 'loom',
+          status: 'completed',
+          outcome: 'ready-to-apply',
+          generatedAt: 2
+        }
+      ],
+      edges: [
+        { id: 'produces:job:job-a->candidate:job-a', kind: 'produces', from: 'job:job-a', to: 'candidate:job-a' }
+      ],
+      data: { status: 'completed', mergeDisposition: 'ready-to-apply' }
+    },
+    {
+      kind: 'frontier.swarm-codex.live-run-graph-event',
+      version: 1,
+      type: 'run.finished',
+      runId: 'demo',
+      generatedAt: 3,
+      nodes: [{
+        id: 'run:demo',
+        kind: 'run',
+        label: 'demo',
+        path: outDir,
+        status: 'completed',
+        outcome: 'ok',
+        generatedAt: 3,
+        data: { ok: true, summary: { total: 1 } }
+      }],
+      data: { ok: true, summary: { total: 1 } }
+    }
+  ];
 }
 
 function snapshotTree(dir) {

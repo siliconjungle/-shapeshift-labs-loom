@@ -4,11 +4,16 @@ export { createLoomConfig, readLoomConfig, writeLoomConfig } from './config.js';
 export { diffLoomProject } from './diff.js';
 export { isDelegateCommand, listDelegateTargets, resolveDelegateTarget, runDelegateCommand } from './delegate.js';
 export {
+  FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT,
+  FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENT_KIND,
   FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE,
   LOOM_NATIVE_RUN_GRAPH_SOURCE,
   importSwarmCodexRunGraph,
   loomRunGraphSourceKind,
+  materializeSwarmCodexLiveRunGraphEvents,
+  normalizeSwarmCodexLiveRunGraphEvents,
   normalizeSwarmCodexRunGraph,
+  parseSwarmCodexRunGraphInput,
   readLoomGraph,
   readLoomRunGraph,
   writeLoomRunGraph
@@ -42,7 +47,9 @@ export type {
   LoomScanOptions,
   LoomSemanticSummary,
   LoomSnapshotOptions,
+  LoomSwarmCodexLiveRunGraphEvent,
   LoomSwarmCodexRunGraphImportOptions,
+  LoomSwarmCodexRunGraphInput,
   LoomSwarmCodexRunGraph,
   LoomSwarmCodexRunGraphEdge,
   LoomSwarmCodexRunGraphNode,

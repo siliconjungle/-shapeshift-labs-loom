@@ -32,6 +32,7 @@ Examples:
   loom run-graph read agent-runs/my-run
   loom run-graph write-json run-graph.json --run-id agent-runs/my-run
   loom run-graph import-swarm agent-runs/my-run/collected/run-graph.json --run-id agent-runs/my-run
+  loom run-graph import-swarm agent-runs/my-run/live-run-graph-events.jsonl --run-id agent-runs/my-run
   loom project --to rust
   loom capabilities --json
   loom swarm collect --run agent-runs/my-run

@@ -13,6 +13,7 @@ import { readLoomStatus, doctorLoomProject } from './status.js';
 import {
   importSwarmCodexRunGraph,
   loomRunGraphSourceKind,
+  parseSwarmCodexRunGraphInput,
   readLoomGraph,
   readLoomRunGraph,
   writeLoomRunGraph
@@ -22,7 +23,7 @@ import { createLoomProjectionPlan } from './project.js';
 import { catLoomObject, snapshotLoomProject } from './snapshot.js';
 import { runSwarmCommand } from './swarm.js';
 import { isDelegateCommand, runDelegateCommand } from './delegate.js';
-import type { LoomCommandResult, LoomLanguage, LoomRunGraph, LoomSwarmCodexRunGraph } from './types.js';
+import type { LoomCommandResult, LoomLanguage, LoomRunGraph } from './types.js';
 
 export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> {
   const command = argv[0] ?? 'help';
@@ -115,7 +116,7 @@ async function runLoomRunGraphCommand(args: CliArgs, json: boolean): Promise<num
   if (subcommand === 'import-swarm' || subcommand === 'import-swarm-codex') {
     const input = args._[1] ?? stringArg(args.input);
     if (!input) throw new Error('run-graph import-swarm requires <file|->');
-    const graph = await readJsonInput<LoomSwarmCodexRunGraph>(input);
+    const graph = parseSwarmCodexRunGraphInput(readTextInput(input));
     const targetRunId = runGraphRunId(args, 2);
     printResult(await importSwarmCodexRunGraph(graph, {
       root: stringArg(args.root),
@@ -189,8 +190,13 @@ async function readRunGraphJson(input: string): Promise<LoomRunGraph> {
 }
 
 async function readJsonInput<T = unknown>(input: string): Promise<T> {
-  if (input === '-') return JSON.parse(fs.readFileSync(0, 'utf8')) as T;
+  if (input === '-') return JSON.parse(readTextInput(input)) as T;
   return readJson<T>(input);
+}
+
+function readTextInput(input: string): string {
+  if (input === '-') return fs.readFileSync(0, 'utf8');
+  return fs.readFileSync(input, 'utf8');
 }
 
 function loomRunGraphFileName(runId = 'current'): string {
@@ -205,13 +211,14 @@ Usage:
   loom run-graph read [<run-id>] [--run-id <id>]
   loom run-graph status [<run-id>] [--run-id <id>] [--json]
   loom run-graph write-json <file|-> [--run-id <id>] [--json]
-  loom run-graph import-swarm <file|-> [--run-id <id>] [--json]
+  loom run-graph import-swarm <json-or-jsonl|-> [--run-id <id>] [--json]
 
 Examples:
   loom run-graph status agent-run-2026 --json
   loom run-graph read agent-run-2026
   loom run-graph write-json run-graph.json --run-id agent-run-2026
   loom run-graph import-swarm agent-runs/my-run/collected/run-graph.json --run-id agent-runs/my-run
+  loom run-graph import-swarm agent-runs/my-run/live-run-graph-events.jsonl --run-id agent-runs/my-run
 `;
 }
 

@@ -133,6 +133,9 @@ export interface LoomRunGraphSourceMetadata {
   runDir?: string;
   outDir?: string;
   importedAt?: string;
+  eventCount?: number;
+  eventTypes?: string[];
+  [key: string]: JsonValue | undefined;
 }
 
 export interface LoomRunGraphSummary {
@@ -228,6 +231,24 @@ export interface LoomSwarmCodexRunGraph {
   };
   summary: Record<string, JsonValue>;
 }
+
+export interface LoomSwarmCodexLiveRunGraphEvent {
+  kind: 'frontier.swarm-codex.live-run-graph-event';
+  version: 1;
+  type: string;
+  runId?: string;
+  jobId?: string;
+  taskId?: string;
+  lane?: string;
+  generatedAt: number;
+  nodes?: LoomSwarmCodexRunGraphNode[];
+  edges?: LoomSwarmCodexRunGraphEdge[];
+  data?: Record<string, unknown>;
+}
+
+export type LoomSwarmCodexRunGraphInput =
+  | LoomSwarmCodexRunGraph
+  | readonly LoomSwarmCodexLiveRunGraphEvent[];
 
 export interface LoomInitOptions {
   root?: string;

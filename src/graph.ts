@@ -1,6 +1,10 @@
 import path from 'node:path';
 import { abs, nowIso, pathExists, readJson, resolveRoot, writeJson } from './common.js';
 import { readLoomConfig } from './config.js';
+import {
+  FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT,
+  materializeSwarmCodexLiveRunGraphEvents
+} from './graph-live.js';
 import type {
   JsonValue,
   LoomConfig,
@@ -11,6 +15,8 @@ import type {
   LoomRunGraphIssue,
   LoomRunGraphOptions,
   LoomRunGraphSourceKind,
+  LoomSwarmCodexLiveRunGraphEvent,
+  LoomSwarmCodexRunGraphInput,
   LoomRunJobGraph,
   LoomSwarmCodexRunGraph,
   LoomSwarmCodexRunGraphImportOptions
@@ -18,6 +24,12 @@ import type {
 
 export const LOOM_NATIVE_RUN_GRAPH_SOURCE: LoomRunGraphSourceKind = 'loom-native';
 export const FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE: LoomRunGraphSourceKind = 'frontier-swarm-codex';
+export {
+  FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT,
+  FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENT_KIND,
+  materializeSwarmCodexLiveRunGraphEvents,
+  parseSwarmCodexRunGraphInput
+} from './graph-live.js';
 
 export async function readLoomGraph(options: { root?: string } = {}): Promise<LoomGraph> {
   const root = resolveRoot(options.root);
@@ -51,6 +63,35 @@ export function normalizeSwarmCodexRunGraph(
   options: LoomSwarmCodexRunGraphImportOptions = {}
 ): LoomRunGraph {
   assertSwarmCodexRunGraph(input);
+  return normalizeSwarmCodexRunGraphArtifact(input, options);
+}
+
+export function normalizeSwarmCodexLiveRunGraphEvents(
+  input: readonly LoomSwarmCodexLiveRunGraphEvent[],
+  options: LoomSwarmCodexRunGraphImportOptions = {}
+): LoomRunGraph {
+  const artifact = materializeSwarmCodexLiveRunGraphEvents(input, options);
+  const eventTypes = Array.from(new Set(input.map((event) => event.type).filter(Boolean)));
+  return normalizeSwarmCodexRunGraphArtifact(artifact, options, {
+    artifactKind: FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT,
+    eventCount: input.length,
+    eventTypes
+  }, {
+    swarmCodexLive: toJsonValue({
+      eventCount: input.length,
+      eventTypes,
+      firstGeneratedAt: input[0]?.generatedAt,
+      lastGeneratedAt: input.at(-1)?.generatedAt
+    })
+  });
+}
+
+function normalizeSwarmCodexRunGraphArtifact(
+  input: LoomSwarmCodexRunGraph,
+  options: LoomSwarmCodexRunGraphImportOptions = {},
+  sourceMetadata: Partial<NonNullable<LoomRunGraph['sourceMetadata']>> = {},
+  extraMetadata: Record<string, JsonValue> = {}
+): LoomRunGraph {
   const root = resolveRoot(options.root);
   const runId = options.runId ?? swarmRunGraphRunId(input);
   const graph = normalizeSwarmCodexJobGraph(input);
@@ -69,7 +110,8 @@ export function normalizeSwarmCodexRunGraph(
       ...(options.sourcePath ? { path: options.sourcePath } : {}),
       runDir: input.runDir,
       outDir: input.outDir,
-      importedAt: nowIso()
+      importedAt: nowIso(),
+      ...sourceMetadata
     },
     summary: {
       nodes: graph.nodes.length,
@@ -86,26 +128,33 @@ export function normalizeSwarmCodexRunGraph(
         indexes: input.indexes,
         nodes: input.nodes,
         edges: input.edges
-      })
+      }),
+      ...extraMetadata
     }
   };
 }
 
 export async function importSwarmCodexRunGraph(
-  input: LoomSwarmCodexRunGraph,
+  input: LoomSwarmCodexRunGraphInput,
   options: LoomSwarmCodexRunGraphImportOptions = {}
 ): Promise<LoomRunGraphImportResult> {
-  const graph = normalizeSwarmCodexRunGraph(input, options);
+  const graph = Array.isArray(input)
+    ? normalizeSwarmCodexLiveRunGraphEvents(input, options)
+    : normalizeSwarmCodexRunGraph(input as LoomSwarmCodexRunGraph, options);
   const runId = options.runId ?? graph.runId ?? 'current';
   const file = await writeLoomRunGraph(graph, { root: options.root, runId });
+  const artifactKind = graph.sourceMetadata?.artifactKind === FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT
+    ? 'live run graph events'
+    : 'run graph';
   return {
     ok: true,
-    message: `imported frontier-swarm-codex run graph ${runId}`,
+    message: `imported frontier-swarm-codex ${artifactKind} ${runId}`,
     path: file,
     runId,
     present: true,
     source: FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE,
     sourceKind: FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE,
+    sourceMetadata: graph.sourceMetadata,
     graphSummary: graph.summary
   };
 }
