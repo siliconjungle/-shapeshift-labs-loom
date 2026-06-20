@@ -26,6 +26,10 @@ function printGraph(graph: LoomGraph): void {
 
 function printKnownFields(result: LoomCommandResult): void {
   if (typeof result.path === 'string') process.stdout.write(`path: ${result.path}\n`);
+  if (typeof result.runId === 'string') process.stdout.write(`run: ${result.runId}\n`);
+  if (typeof result.present === 'boolean') process.stdout.write(`present: ${result.present ? 'yes' : 'no'}\n`);
+  if (typeof result.planId === 'string') process.stdout.write(`plan: ${result.planId}\n`);
+  if (typeof result.source === 'string') process.stdout.write(`source: ${result.source}\n`);
   if (typeof result.objectId === 'string') process.stdout.write(`object: ${result.objectId}\n`);
   if (typeof result.ref === 'string') process.stdout.write(`ref: ${result.ref}\n`);
   if (result.graphSummary) process.stdout.write(`graph: ${JSON.stringify(result.graphSummary)}\n`);

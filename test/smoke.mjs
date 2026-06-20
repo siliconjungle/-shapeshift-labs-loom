@@ -33,6 +33,10 @@ assert.match(loomHelp, /status prints UI target dashboard commands, URL behavior
 assert.match(loomHelp, /status --json reports uiLaunch commands, dashboard URL hints/);
 assert.match(loomHelp, /--steering-out-dir/);
 assert.match(loomHelp, /--run=agent-runs\/my-run/);
+assert.match(loomHelp, /loom run-graph read\|status\|write-json/);
+const runGraphHelp = run('run-graph', 'help');
+assert.match(runGraphHelp, /loom run-graph - durable swarm run dependency graph helpers/);
+assert.match(runGraphHelp, /loom run-graph write-json <file\|->/);
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected'), { recursive: true });
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected', 'apply-ledger'), { recursive: true });
 fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'codex-events.jsonl'), '{}\n');
@@ -226,6 +230,38 @@ const runGraph = {
 const runGraphPath = await api.writeLoomRunGraph(runGraph, { root });
 assert.equal(path.relative(root, runGraphPath).replaceAll(path.sep, '/'), '.loom/graph/runs/demo_run_graph.json');
 assert.deepEqual(await api.readLoomRunGraph({ root, runId: 'demo/run:graph' }), runGraph);
+const missingRunGraphStatus = JSON.parse(run('run-graph', 'status', 'missing/run', '--json'));
+assert.equal(missingRunGraphStatus.ok, false);
+assert.equal(missingRunGraphStatus.present, false);
+assert.equal(missingRunGraphStatus.runId, 'missing/run');
+assert.equal(relativeToRoot(missingRunGraphStatus.path), '.loom/graph/runs/missing_run.json');
+assert.match(missingRunGraphStatus.message, /missing loom run graph/);
+const runGraphStatus = JSON.parse(run('run-graph', 'status', 'demo/run:graph', '--json'));
+assert.equal(runGraphStatus.ok, true);
+assert.equal(runGraphStatus.present, true);
+assert.equal(runGraphStatus.runId, 'demo/run:graph');
+assert.equal(runGraphStatus.planId, 'demo-plan');
+assert.deepEqual(runGraphStatus.graphSummary, runGraph.summary);
+const runGraphStatusText = run('run-graph', 'status', 'demo/run:graph');
+assert.match(runGraphStatusText, /ok: found loom run graph demo\/run:graph/);
+assert.match(runGraphStatusText, /present: yes/);
+const runGraphViaCli = JSON.parse(run('run-graph', 'read', 'demo/run:graph'));
+assert.deepEqual(runGraphViaCli, runGraph);
+const cliRunGraph = {
+  ...runGraph,
+  runId: 'cli/write',
+  planId: 'cli-plan',
+  metadata: {
+    lane: 'loom',
+    command: 'write-json'
+  }
+};
+fs.writeFileSync(path.join(root, 'run-graph-input.json'), `${JSON.stringify(cliRunGraph, null, 2)}\n`);
+const writeRunGraph = JSON.parse(run('run-graph', 'write-json', 'run-graph-input.json', '--json'));
+assert.equal(writeRunGraph.ok, true);
+assert.equal(writeRunGraph.runId, 'cli/write');
+assert.equal(relativeToRoot(writeRunGraph.path), '.loom/graph/runs/cli_write.json');
+assert.deepEqual(JSON.parse(run('run-graph', 'read', 'cli/write')), cliRunGraph);
 const graphAfterRunGraph = JSON.parse(fs.readFileSync(path.join(root, '.loom', 'graph', 'current.json'), 'utf8'));
 assert.equal(graphAfterRunGraph.kind, 'loom.graph');
 assert.equal(graphAfterRunGraph.summary.files, 5);
@@ -294,6 +330,10 @@ function runWithEnv(env, ...args) {
     encoding: 'utf8',
     env: { ...process.env, ...env }
   });
+}
+
+function relativeToRoot(file) {
+  return path.relative(fs.realpathSync(root), file).replaceAll(path.sep, '/');
 }
 
 function snapshotTree(dir) {

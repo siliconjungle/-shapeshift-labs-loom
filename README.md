@@ -34,6 +34,7 @@ Loom gives a repository a durable semantic workspace:
 - `.loom/index.json` records the current imported source graph.
 - `.loom/refs/` and `.loom/HEAD` track semantic graph snapshots.
 - `.loom/graph/current.json` is the current machine-readable source graph.
+- `.loom/graph/runs/` stores durable swarm run graphs by run id.
 - `.loom/projections/` stores target-language projection plans.
 - `loom swarm ...` delegates to Frontier Swarm / Codex worker orchestration.
 - `loom ui ...` opens the dark Loom dashboard against a swarm run or collected
@@ -53,6 +54,7 @@ loom scan
 loom status --json
 loom snapshot -m "initial semantic graph"
 loom diff --json
+loom run-graph status my-run --json
 loom project --to python
 loom capabilities
 loom version
@@ -118,6 +120,24 @@ Prints `.loom/graph/current.json`.
 ```sh
 loom graph [--json]
 ```
+
+### `loom run-graph`
+
+Reads and writes durable run dependency graphs stored under
+`.loom/graph/runs/`. Run ids are sanitized into stable filenames, so a run id
+such as `agent-runs/my-run` is stored as
+`.loom/graph/runs/agent-runs_my-run.json`.
+
+```sh
+loom run-graph read [<run-id>] [--run-id <id>]
+loom run-graph status [<run-id>] [--run-id <id>] [--json]
+loom run-graph write-json <file|-> [--run-id <id>] [--json]
+```
+
+`read` prints the stored `loom.run-graph` JSON. `status` reports whether the
+graph file is missing, present, or present but invalid without surfacing a raw
+stack trace. `write-json` stores a JSON `loom.run-graph` document using the
+existing Loom run graph writer; pass `-` to read from stdin.
 
 ### `loom diff`
 

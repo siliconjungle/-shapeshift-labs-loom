@@ -1,21 +1,22 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { parseArgs, boolArg, listArg, stringArg } from './args.js';
-import { packageVersion } from './common.js';
+import { parseArgs, boolArg, listArg, stringArg, type CliArgs } from './args.js';
+import { abs, packageVersion, pathExists, readJson, resolveRoot } from './common.js';
 import { readLoomCapabilities } from './capabilities.js';
+import { readLoomConfig } from './config.js';
 import { helpText } from './help.js';
 import { printResult } from './output.js';
 import { initLoomProject } from './init.js';
 import { scanLoomProject } from './scan.js';
 import { readLoomStatus, doctorLoomProject } from './status.js';
-import { readLoomGraph } from './graph.js';
+import { readLoomGraph, readLoomRunGraph, writeLoomRunGraph } from './graph.js';
 import { diffLoomProject } from './diff.js';
 import { createLoomProjectionPlan } from './project.js';
 import { catLoomObject, snapshotLoomProject } from './snapshot.js';
 import { runSwarmCommand } from './swarm.js';
 import { isDelegateCommand, runDelegateCommand } from './delegate.js';
-import type { LoomLanguage } from './types.js';
+import type { LoomCommandResult, LoomLanguage, LoomRunGraph } from './types.js';
 
 export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> {
   const command = argv[0] ?? 'help';
@@ -43,6 +44,8 @@ export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> 
       printResult(await readLoomStatus(), json);
     } else if (command === 'graph') {
       printResult(await readLoomGraph(), json);
+    } else if (command === 'run-graph') {
+      return await runLoomRunGraphCommand(args, json);
     } else if (command === 'diff') {
       printResult(await diffLoomProject(), json);
     } else if (command === 'snapshot') {
@@ -70,6 +73,123 @@ export async function runLoomCli(argv = process.argv.slice(2)): Promise<number> 
     else process.stderr.write(`${message}\n`);
     return 1;
   }
+}
+
+async function runLoomRunGraphCommand(args: CliArgs, json: boolean): Promise<number> {
+  const subcommand = args._[0] ?? 'status';
+  if (subcommand === 'help' || subcommand === '--help' || subcommand === '-h') {
+    process.stdout.write(runGraphHelpText());
+    return 0;
+  }
+  if (subcommand === 'read') {
+    const runId = runGraphRunId(args, 1);
+    printResult(await readLoomRunGraph({ root: stringArg(args.root), runId }), true);
+    return 0;
+  }
+  if (subcommand === 'status') {
+    printResult(await readLoomRunGraphStatus({ root: stringArg(args.root), runId: runGraphRunId(args, 1) }), json);
+    return 0;
+  }
+  if (subcommand === 'write-json') {
+    const input = args._[1] ?? stringArg(args.input);
+    if (!input) throw new Error('run-graph write-json requires <file|->');
+    const graph = await readRunGraphJson(input);
+    const targetRunId = runGraphRunId(args, 2) ?? graph.runId ?? 'current';
+    const path = await writeLoomRunGraph(graph, { root: stringArg(args.root), runId: targetRunId });
+    printResult({
+      ok: true,
+      message: `wrote loom run graph ${targetRunId}`,
+      path,
+      runId: targetRunId,
+      present: true,
+      graphSummary: graph.summary
+    }, json);
+    return 0;
+  }
+  throw new Error(`unknown run-graph command: ${subcommand}`);
+}
+
+async function readLoomRunGraphStatus(options: { root?: string; runId?: string }): Promise<LoomCommandResult> {
+  const root = resolveRoot(options.root);
+  const runId = options.runId ?? 'current';
+  const label = options.runId ?? 'current';
+  let path: string | undefined;
+  try {
+    const config = await readLoomConfig(root);
+    path = abs(root, `${config.generated.graph}/runs/${loomRunGraphFileName(options.runId)}.json`);
+  } catch (error) {
+    return {
+      ok: false,
+      message: errorMessage(error),
+      runId: label,
+      present: false
+    };
+  }
+
+  if (!(await pathExists(path))) {
+    return {
+      ok: false,
+      message: `missing loom run graph for ${label}`,
+      path,
+      runId: label,
+      present: false
+    };
+  }
+
+  try {
+    const graph = await readLoomRunGraph(options);
+    return {
+      ok: true,
+      message: `found loom run graph ${graph.runId ?? runId}`,
+      path,
+      runId: graph.runId ?? runId,
+      present: true,
+      planId: graph.planId,
+      source: graph.source,
+      graphSummary: graph.summary
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: `invalid loom run graph for ${label}: ${errorMessage(error)}`,
+      path,
+      runId: label,
+      present: true
+    };
+  }
+}
+
+function runGraphRunId(args: CliArgs, positionalIndex: number): string | undefined {
+  return stringArg(args['run-id'] ?? args.runId ?? args.run ?? args.id) ?? args._[positionalIndex];
+}
+
+async function readRunGraphJson(input: string): Promise<LoomRunGraph> {
+  if (input === '-') return JSON.parse(fs.readFileSync(0, 'utf8')) as LoomRunGraph;
+  return readJson<LoomRunGraph>(input);
+}
+
+function loomRunGraphFileName(runId = 'current'): string {
+  const cleaned = runId.trim().replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '');
+  return cleaned || 'current';
+}
+
+function runGraphHelpText(): string {
+  return `loom run-graph - durable swarm run dependency graph helpers
+
+Usage:
+  loom run-graph read [<run-id>] [--run-id <id>]
+  loom run-graph status [<run-id>] [--run-id <id>] [--json]
+  loom run-graph write-json <file|-> [--run-id <id>] [--json]
+
+Examples:
+  loom run-graph status agent-run-2026 --json
+  loom run-graph read agent-run-2026
+  loom run-graph write-json run-graph.json --run-id agent-run-2026
+`;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function isCliEntrypoint(): boolean {
