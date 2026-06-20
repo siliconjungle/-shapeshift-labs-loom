@@ -185,10 +185,50 @@ assert.equal(api.languageForPath('x.ts'), 'typescript');
 assert.equal(api.languageForPath('x.jsx'), 'javascript');
 assert.equal(api.syntaxForPath('x.jsx'), 'jsx');
 assert.equal(typeof api.scanLoomProject, 'function');
+assert.equal(typeof api.readLoomGraph, 'function');
+assert.equal(typeof api.readLoomRunGraph, 'function');
+assert.equal(typeof api.writeLoomRunGraph, 'function');
 assert.equal(typeof api.readLoomCapabilities, 'function');
 assert.equal(api.isDelegateCommand('lang'), true);
 assert.equal(api.isDelegateCommand('frontier'), true);
 assert.equal(api.isDelegateCommand('ui'), true);
+const sourceGraphViaApi = await api.readLoomGraph({ root });
+assert.equal(sourceGraphViaApi.kind, 'loom.graph');
+assert.equal(sourceGraphViaApi.summary.files, 5);
+const runGraph = {
+  kind: 'loom.run-graph',
+  version: 1,
+  generatedAt: new Date(0).toISOString(),
+  root,
+  runId: 'demo/run:graph',
+  planId: 'demo-plan',
+  source: 'smoke',
+  summary: {
+    nodes: 2,
+    edges: 1,
+    roots: 1,
+    leaves: 1,
+    issues: 0
+  },
+  graph: {
+    nodes: ['prepare', 'verify'],
+    edges: [{ from: 'prepare', to: 'verify', type: 'depends-on' }],
+    dependentsByJobId: { prepare: ['verify'], verify: [] },
+    dependenciesByJobId: { prepare: [], verify: ['prepare'] },
+    roots: ['prepare'],
+    leaves: ['verify'],
+    issues: []
+  },
+  metadata: {
+    lane: 'loom'
+  }
+};
+const runGraphPath = await api.writeLoomRunGraph(runGraph, { root });
+assert.equal(path.relative(root, runGraphPath).replaceAll(path.sep, '/'), '.loom/graph/runs/demo_run_graph.json');
+assert.deepEqual(await api.readLoomRunGraph({ root, runId: 'demo/run:graph' }), runGraph);
+const graphAfterRunGraph = JSON.parse(fs.readFileSync(path.join(root, '.loom', 'graph', 'current.json'), 'utf8'));
+assert.equal(graphAfterRunGraph.kind, 'loom.graph');
+assert.equal(graphAfterRunGraph.summary.files, 5);
 
 const langHelp = run('lang', '--help');
 assert.match(langHelp, /frontier-lang/);

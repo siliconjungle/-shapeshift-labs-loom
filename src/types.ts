@@ -108,6 +108,56 @@ export interface LoomGraphSummary {
   semanticFailures: number;
 }
 
+export interface LoomRunGraph {
+  kind: 'loom.run-graph';
+  version: 1;
+  generatedAt: string;
+  root: string;
+  runId?: string;
+  planId?: string;
+  source?: string;
+  summary: LoomRunGraphSummary;
+  graph: LoomRunJobGraph;
+  metadata?: Record<string, JsonValue>;
+}
+
+export interface LoomRunGraphSummary {
+  nodes: number;
+  edges: number;
+  roots: number;
+  leaves: number;
+  issues: number;
+}
+
+export interface LoomRunJobGraph {
+  nodes: string[];
+  edges: LoomRunGraphEdge[];
+  dependentsByJobId: Record<string, string[]>;
+  dependenciesByJobId: Record<string, string[]>;
+  roots: string[];
+  leaves: string[];
+  issues: LoomRunGraphIssue[];
+}
+
+export interface LoomRunGraphEdge {
+  from: string;
+  to: string;
+  type: 'depends-on' | 'parent-task' | string;
+}
+
+export interface LoomRunGraphIssue {
+  code: string;
+  message: string;
+  severity?: 'info' | 'warning' | 'error' | string;
+  path?: string;
+  [key: string]: JsonValue | undefined;
+}
+
+export interface LoomRunGraphOptions {
+  root?: string;
+  runId?: string;
+}
+
 export interface LoomInitOptions {
   root?: string;
   name?: string;

@@ -362,8 +362,10 @@ import {
   snapshotLoomProject,
   diffLoomProject,
   createLoomProjectionPlan,
+  readLoomRunGraph,
   readLoomCapabilities,
-  runDelegateCommand
+  runDelegateCommand,
+  writeLoomRunGraph
 } from '@shapeshift-labs/loom';
 
 await initLoomProject({ name: 'demo', include: ['src/**/*.ts'] });
@@ -371,6 +373,24 @@ const scan = await scanLoomProject();
 const snapshot = await snapshotLoomProject({ message: 'semantic checkpoint' });
 const diff = await diffLoomProject();
 const projection = await createLoomProjectionPlan({ target: 'python' });
+await writeLoomRunGraph({
+  kind: 'loom.run-graph',
+  version: 1,
+  generatedAt: new Date().toISOString(),
+  root: process.cwd(),
+  runId: 'demo',
+  summary: { nodes: 1, edges: 0, roots: 1, leaves: 1, issues: 0 },
+  graph: {
+    nodes: ['task-1'],
+    edges: [],
+    dependentsByJobId: { 'task-1': [] },
+    dependenciesByJobId: { 'task-1': [] },
+    roots: ['task-1'],
+    leaves: ['task-1'],
+    issues: []
+  }
+});
+const runGraph = await readLoomRunGraph({ runId: 'demo' });
 const capabilities = await readLoomCapabilities();
 await runDelegateCommand('lang', ['import', 'src/app.ts', '--sidecar']);
 ```

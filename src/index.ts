@@ -3,7 +3,7 @@ export { inspectDelegates, readLoomCapabilities } from './capabilities.js';
 export { createLoomConfig, readLoomConfig, writeLoomConfig } from './config.js';
 export { diffLoomProject } from './diff.js';
 export { isDelegateCommand, listDelegateTargets, resolveDelegateTarget, runDelegateCommand } from './delegate.js';
-export { readLoomGraph } from './graph.js';
+export { readLoomGraph, readLoomRunGraph, writeLoomRunGraph } from './graph.js';
 export { initLoomProject } from './init.js';
 export { createLoomProjectionPlan } from './project.js';
 export { scanLoomProject, languageForPath, syntaxForPath } from './scan.js';
@@ -21,6 +21,12 @@ export type {
   LoomGraphSummary,
   LoomInitOptions,
   LoomLanguage,
+  LoomRunGraph,
+  LoomRunGraphEdge,
+  LoomRunGraphIssue,
+  LoomRunGraphOptions,
+  LoomRunGraphSummary,
+  LoomRunJobGraph,
   LoomScanOptions,
   LoomSemanticSummary,
   LoomSnapshotOptions,
