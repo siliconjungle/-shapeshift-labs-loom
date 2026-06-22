@@ -4,8 +4,6 @@ export { createLoomConfig, readLoomConfig, writeLoomConfig } from './config.js';
 export { diffLoomProject } from './diff.js';
 export { isDelegateCommand, listDelegateTargets, resolveDelegateTarget, runDelegateCommand } from './delegate.js';
 export {
-  FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT,
-  FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENT_KIND,
   FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE,
   FRONTIER_RUN_GRAPH_SOURCE,
   LOOM_NATIVE_RUN_GRAPH_SOURCE,
@@ -17,14 +15,9 @@ export {
   buildRunGraphPatternChunk,
   createLoomRunGraphPanelRecords,
   importFrontierRunEvents,
-  importSwarmCodexRunGraph,
   loomRunGraphSourceKind,
-  materializeSwarmCodexLiveRunGraphEvents,
   normalizeFrontierRunEvents,
-  normalizeSwarmCodexLiveRunGraphEvents,
-  normalizeSwarmCodexRunGraph,
   parseFrontierRunEventsInput,
-  parseSwarmCodexRunGraphInput,
   readLoomGraph,
   readLoomRunGraph,
   writeLoomRunGraph
@@ -96,12 +89,6 @@ export type {
   LoomSemanticChangeRecord,
   LoomSourceSpan,
   LoomSnapshotOptions,
-  LoomSwarmCodexLiveRunGraphEvent,
-  LoomSwarmCodexRunGraphImportOptions,
-  LoomSwarmCodexRunGraphInput,
-  LoomSwarmCodexRunGraph,
-  LoomSwarmCodexRunGraphEdge,
-  LoomSwarmCodexRunGraphNode,
   LoomSourceConfig,
   LoomTournamentCandidateRecord,
   LoomTournamentRecord
