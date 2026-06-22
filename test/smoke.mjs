@@ -30,6 +30,7 @@ assert.equal(run('version').trim(), expectedVersion);
 assert.equal(run('--version').trim(), expectedVersion);
 const loomHelp = run('help');
 assert.match(loomHelp, /loom swarm ui \[<run-or-collection>\]/);
+assert.match(loomHelp, /loom swarm sync --run agent-runs\/my-run --peer/);
 assert.match(loomHelp, /status prints UI target dashboard commands, URL behavior, data source, run health, landed\/applied counts, and active artifact paths/);
 assert.match(loomHelp, /status --json reports uiLaunch commands, dashboard URL hints/);
 assert.match(loomHelp, /--steering-out-dir/);

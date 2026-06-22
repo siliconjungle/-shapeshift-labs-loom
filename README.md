@@ -276,6 +276,7 @@ loom swarm doctor
 loom swarm plan --manifest agent-ownership.json --tasks work-queue.json --outDir agent-runs/plan
 loom swarm run --manifest agent-ownership.json --tasks work-queue.json --workspace copy --concurrency 8
 loom swarm collect --run agent-runs/my-run
+loom swarm sync --run agent-runs/my-run --peer /Volumes/worker/agent-runs/my-run
 loom swarm dashboard agent-runs/my-run/collected
 loom swarm ui agent-runs/my-run --open
 loom ui agent-runs/my-run
@@ -285,9 +286,9 @@ loom swarm query --run agent-runs/my-run --semantic --readiness ready
 loom swarm tournament show --run agent-runs/my-run
 ```
 
-This exposes swarm planning, run/resume/stop, collect/query, merge admission,
-semantic sidecar inspection, adaptive/tournament scheduling, continuation from
-collected child backlogs/model-routing feedback, scoring, cleanup, repair-links,
+This exposes swarm planning, run/resume/stop, run-log sync, collect/query, merge
+admission, semantic sidecar inspection, adaptive/tournament scheduling,
+continuation from collected child backlogs/model-routing feedback, scoring, cleanup, repair-links,
 and verification commands provided by
 `@shapeshift-labs/frontier-swarm-codex`.
 

@@ -35,6 +35,7 @@ Examples:
   loom project --to rust
   loom capabilities --json
   loom swarm collect --run agent-runs/my-run
+  loom swarm sync --run agent-runs/my-run --peer /Volumes/worker/agent-runs/my-run
   loom swarm dashboard agent-runs/my-run/collected --open
   loom swarm ui agent-runs/my-run --port 4173
   loom ui --collection agent-runs/my-run/collected --open
