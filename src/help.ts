@@ -30,7 +30,7 @@ Examples:
   loom cat-file <object-id> --json
   loom run-graph status agent-runs/my-run --json
   loom run-graph read agent-runs/my-run
-  loom run-graph write-json run-graph.json --run-id agent-runs/my-run
+  loom run-graph write-json loom-run-graph.json --run-id agent-runs/my-run
   loom run-graph import-frontier-run agent-runs/my-run/run-events.jsonl --run-id agent-runs/my-run
   loom project --to rust
   loom capabilities --json

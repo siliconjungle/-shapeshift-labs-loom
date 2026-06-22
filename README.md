@@ -148,13 +148,13 @@ durable `.loom/graph/runs/` model. Imported graphs are stored as
 distinguish native and imported graphs without parsing free-form metadata.
 
 `loom.run-graph` also accepts an optional `decisionGraph` section for typed
-durable decision graphs. The legacy `graph.nodes: string[]` and dependency
-indexes stay compatible for older job graph readers, while `decisionGraph`
-stores typed nodes, edges, events, snapshots, indexes, and records for evidence,
-gates, semantic changes, merge candidates, tournaments, panels, replays, and
+durable decision graphs. The `graph.nodes: string[]` and dependency indexes are
+the compact job graph for simple readers, while `decisionGraph` stores typed
+nodes, edges, events, snapshots, indexes, and records for evidence, gates,
+semantic changes, merge candidates, tournaments, panels, replays, and
 improvement loops. Built-in node kinds include `intent`, `task`, `worker`,
 `candidate`, `evidence`, `gate`, `decision`, `merge`, `replay`, and `rsi`.
-Swarm imports populate this section alongside the legacy graph.
+`frontier-run` imports populate this section alongside the compact job graph.
 
 Typed summaries include `summary.typedCounts` when imported data contains
 recognizable intents, tasks, workers, candidates, gates, evidence, merges,

@@ -125,7 +125,7 @@ export interface LoomRunGraph {
   metadata?: Record<string, JsonValue>;
 }
 
-export type LoomRunGraphSourceKind = 'loom-native' | 'frontier-swarm-codex' | 'frontier-run' | string;
+export type LoomRunGraphSourceKind = 'loom-native' | 'frontier-run' | string;
 
 export interface LoomRunGraphSourceMetadata {
   kind: LoomRunGraphSourceKind;
@@ -599,10 +599,6 @@ export interface LoomRunGraphOptions {
   runId?: string;
 }
 
-export interface LoomSwarmCodexRunGraphImportOptions extends LoomRunGraphOptions {
-  sourcePath?: string;
-}
-
 export interface LoomFrontierRunImportOptions extends LoomRunGraphOptions {
   sourcePath?: string;
 }
@@ -614,69 +610,6 @@ export interface LoomRunGraphImportResult extends LoomCommandResult {
   sourceKind: LoomRunGraphSourceKind;
   graphSummary: LoomRunGraphSummary;
 }
-
-export interface LoomSwarmCodexRunGraphNode {
-  id: string;
-  kind: string;
-  label?: string;
-  jobId?: string;
-  taskId?: string;
-  lane?: string;
-  model?: string;
-  computeId?: string;
-  modelTier?: string;
-  bucket?: string;
-  status?: string;
-  outcome?: string;
-  path?: string;
-  generatedAt?: number;
-  refs?: Record<string, string>;
-  data?: Record<string, unknown>;
-}
-
-export interface LoomSwarmCodexRunGraphEdge {
-  id: string;
-  kind: string;
-  from: string;
-  to: string;
-  label?: string;
-  data?: Record<string, unknown>;
-}
-
-export interface LoomSwarmCodexRunGraph {
-  kind: 'frontier.swarm-codex.run-graph';
-  version: 1;
-  id: string;
-  generatedAt: number;
-  runDir: string;
-  outDir: string;
-  nodes: LoomSwarmCodexRunGraphNode[];
-  edges: LoomSwarmCodexRunGraphEdge[];
-  indexes: {
-    byKind: Record<string, string[]>;
-    byJobId: Record<string, string[]>;
-    byTaskId: Record<string, string[]>;
-  };
-  summary: Record<string, JsonValue>;
-}
-
-export interface LoomSwarmCodexLiveRunGraphEvent {
-  kind: 'frontier.swarm-codex.live-run-graph-event';
-  version: 1;
-  type: string;
-  runId?: string;
-  jobId?: string;
-  taskId?: string;
-  lane?: string;
-  generatedAt: number;
-  nodes?: LoomSwarmCodexRunGraphNode[];
-  edges?: LoomSwarmCodexRunGraphEdge[];
-  data?: Record<string, unknown>;
-}
-
-export type LoomSwarmCodexRunGraphInput =
-  | LoomSwarmCodexRunGraph
-  | readonly LoomSwarmCodexLiveRunGraphEvent[];
 
 export interface LoomInitOptions {
   root?: string;

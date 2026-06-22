@@ -113,7 +113,7 @@ async function runLoomRunGraphCommand(args: CliArgs, json: boolean): Promise<num
     }, json);
     return 0;
   }
-  if (subcommand === 'import-frontier-run' || subcommand === 'import-run') {
+  if (subcommand === 'import-frontier-run') {
     const input = args._[1] ?? stringArg(args.input);
     if (!input) throw new Error('run-graph import-frontier-run requires <run-events.jsonl|->');
     const events = parseFrontierRunEventsInput(readTextInput(input));
@@ -216,7 +216,7 @@ Usage:
 Examples:
   loom run-graph status agent-run-2026 --json
   loom run-graph read agent-run-2026
-  loom run-graph write-json run-graph.json --run-id agent-run-2026
+  loom run-graph write-json loom-run-graph.json --run-id agent-run-2026
   loom run-graph import-frontier-run agent-runs/my-run/run-events.jsonl --run-id agent-runs/my-run
 `;
 }

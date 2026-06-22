@@ -4,7 +4,6 @@ export { createLoomConfig, readLoomConfig, writeLoomConfig } from './config.js';
 export { diffLoomProject } from './diff.js';
 export { isDelegateCommand, listDelegateTargets, resolveDelegateTarget, runDelegateCommand } from './delegate.js';
 export {
-  FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE,
   FRONTIER_RUN_GRAPH_SOURCE,
   LOOM_NATIVE_RUN_GRAPH_SOURCE,
   LOOM_RUN_GRAPH_CHUNK_TEMPLATE_KIND,

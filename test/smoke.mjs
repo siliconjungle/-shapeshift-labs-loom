@@ -36,11 +36,13 @@ assert.match(loomHelp, /--steering-out-dir/);
 assert.match(loomHelp, /--run=agent-runs\/my-run/);
 assert.match(loomHelp, /loom run-graph read\|status\|write-json\|import-frontier-run/);
 assert.doesNotMatch(loomHelp, /import-swarm/);
+assert.doesNotMatch(loomHelp, /import-run/);
 const runGraphHelp = run('run-graph', 'help');
 assert.match(runGraphHelp, /loom run-graph - durable swarm run dependency graph helpers/);
 assert.match(runGraphHelp, /loom run-graph write-json <file\|->/);
 assert.match(runGraphHelp, /loom run-graph import-frontier-run <run-events\.jsonl\|->/);
 assert.doesNotMatch(runGraphHelp, /import-swarm/);
+assert.doesNotMatch(runGraphHelp, /import-run/);
 assert.doesNotMatch(runGraphHelp, /live-run-graph-events\.jsonl/);
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected'), { recursive: true });
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected', 'apply-ledger'), { recursive: true });
@@ -201,9 +203,13 @@ assert.equal(typeof api.writeLoomRunGraph, 'function');
 assert.equal(typeof api.normalizeFrontierRunEvents, 'function');
 assert.equal(typeof api.parseFrontierRunEventsInput, 'function');
 assert.equal(typeof api.importFrontierRunEvents, 'function');
+assert.equal('FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE' in api, false);
+assert.equal('FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENT_KIND' in api, false);
+assert.equal('FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT' in api, false);
 assert.equal('normalizeSwarmCodexRunGraph' in api, false);
 assert.equal('normalizeSwarmCodexLiveRunGraphEvents' in api, false);
 assert.equal('parseSwarmCodexRunGraphInput' in api, false);
+assert.equal('materializeSwarmCodexLiveRunGraphEvents' in api, false);
 assert.equal('importSwarmCodexRunGraph' in api, false);
 assert.equal(typeof api.buildRunGraphChainChunk, 'function');
 assert.equal(typeof api.buildRunGraphForkChunk, 'function');
@@ -366,6 +372,14 @@ try {
 }
 assert.equal(unsupportedImportSwarm.ok, false);
 assert.equal(unsupportedImportSwarm.message, 'unknown run-graph command: import-swarm');
+let unsupportedImportRun;
+try {
+  run('run-graph', 'import-run', 'run-events.jsonl', '--json');
+} catch (error) {
+  unsupportedImportRun = JSON.parse(error.stdout);
+}
+assert.equal(unsupportedImportRun.ok, false);
+assert.equal(unsupportedImportRun.message, 'unknown run-graph command: import-run');
 const frontierRunEvents = createFrontierRunEventsFixture(frontierRun);
 const frontierRunJsonl = frontierRunEvents.map((event) => frontierRun.serializeRunEventJsonl(event)).join('');
 const parsedFrontierRunEvents = api.parseFrontierRunEventsInput(frontierRunJsonl);
@@ -724,90 +738,6 @@ function createTypedRunGraphFixture(rootDir) {
     },
     metadata: {
       lane: 'graph-types'
-    }
-  };
-}
-
-function createSwarmRunGraphFixture(rootDir) {
-  const generatedAt = 0;
-  const runDir = path.join(rootDir, 'agent-runs', 'demo');
-  const outDir = path.join(runDir, 'collected');
-  return {
-    kind: 'frontier.swarm-codex.run-graph',
-    version: 1,
-    id: 'frontier-swarm-codex.run-graph:demo',
-    generatedAt,
-    runDir,
-    outDir,
-    nodes: [
-      {
-        id: 'run:demo',
-        kind: 'run',
-        label: 'demo',
-        path: runDir,
-        generatedAt,
-        data: { outDir }
-      },
-      {
-        id: 'task:task-a',
-        kind: 'task',
-        label: 'Task A',
-        taskId: 'task-a',
-        lane: 'loom',
-        generatedAt
-      },
-      {
-        id: 'job:job-a',
-        kind: 'job',
-        label: 'Job A',
-        jobId: 'job-a',
-        taskId: 'task-a',
-        lane: 'loom',
-        status: 'completed',
-        generatedAt
-      },
-      {
-        id: 'candidate:job-a',
-        kind: 'candidate',
-        label: 'Candidate A',
-        jobId: 'job-a',
-        taskId: 'task-a',
-        lane: 'loom',
-        status: 'completed',
-        outcome: 'ready-to-apply',
-        generatedAt
-      }
-    ],
-    edges: [
-      { id: 'contains:run:demo->task:task-a', kind: 'contains', from: 'run:demo', to: 'task:task-a' },
-      { id: 'produces:task:task-a->job:job-a', kind: 'produces', from: 'task:task-a', to: 'job:job-a' },
-      { id: 'produces:job:job-a->candidate:job-a', kind: 'produces', from: 'job:job-a', to: 'candidate:job-a' }
-    ],
-    indexes: {
-      byKind: {
-        run: ['run:demo'],
-        task: ['task:task-a'],
-        job: ['job:job-a'],
-        candidate: ['candidate:job-a']
-      },
-      byJobId: {
-        'job-a': ['candidate:job-a', 'job:job-a']
-      },
-      byTaskId: {
-        'task-a': ['candidate:job-a', 'job:job-a', 'task:task-a']
-      }
-    },
-    summary: {
-      nodeCount: 4,
-      edgeCount: 3,
-      nodeKinds: { run: 1, task: 1, job: 1, candidate: 1 },
-      edgeKinds: { contains: 1, produces: 2 },
-      taskCount: 1,
-      jobCount: 1,
-      candidateCount: 1,
-      evidenceCount: 0,
-      decisionCount: 0,
-      gateCount: 0
     }
   };
 }
