@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { createFrontierRunEventsFixture } from './frontier-run-fixture.mjs';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loom-smoke-'));
 const cli = path.resolve('dist/cli.js');
@@ -33,11 +34,12 @@ assert.match(loomHelp, /status prints UI target dashboard commands, URL behavior
 assert.match(loomHelp, /status --json reports uiLaunch commands, dashboard URL hints/);
 assert.match(loomHelp, /--steering-out-dir/);
 assert.match(loomHelp, /--run=agent-runs\/my-run/);
-assert.match(loomHelp, /loom run-graph read\|status\|write-json\|import-swarm/);
+assert.match(loomHelp, /loom run-graph read\|status\|write-json\|import-swarm\|import-frontier-run/);
 const runGraphHelp = run('run-graph', 'help');
 assert.match(runGraphHelp, /loom run-graph - durable swarm run dependency graph helpers/);
 assert.match(runGraphHelp, /loom run-graph write-json <file\|->/);
 assert.match(runGraphHelp, /loom run-graph import-swarm <json-or-jsonl\|->/);
+assert.match(runGraphHelp, /loom run-graph import-frontier-run <run-events\.jsonl\|->/);
 assert.match(runGraphHelp, /live-run-graph-events\.jsonl/);
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected'), { recursive: true });
 fs.mkdirSync(path.join(root, 'agent-runs', 'demo', 'collected', 'apply-ledger'), { recursive: true });
@@ -187,6 +189,7 @@ assert.deepEqual(diff.deleted, []);
 assert.deepEqual(snapshotTree(path.join(root, '.loom')), loomBeforeDiff);
 
 const api = await import('../dist/index.js');
+const frontierRun = await import('@shapeshift-labs/frontier-run');
 assert.equal(api.languageForPath('x.ts'), 'typescript');
 assert.equal(api.languageForPath('x.jsx'), 'javascript');
 assert.equal(api.syntaxForPath('x.jsx'), 'jsx');
@@ -196,8 +199,11 @@ assert.equal(typeof api.readLoomRunGraph, 'function');
 assert.equal(typeof api.writeLoomRunGraph, 'function');
 assert.equal(typeof api.normalizeSwarmCodexRunGraph, 'function');
 assert.equal(typeof api.normalizeSwarmCodexLiveRunGraphEvents, 'function');
+assert.equal(typeof api.normalizeFrontierRunEvents, 'function');
 assert.equal(typeof api.parseSwarmCodexRunGraphInput, 'function');
+assert.equal(typeof api.parseFrontierRunEventsInput, 'function');
 assert.equal(typeof api.importSwarmCodexRunGraph, 'function');
+assert.equal(typeof api.importFrontierRunEvents, 'function');
 assert.equal(typeof api.buildRunGraphChainChunk, 'function');
 assert.equal(typeof api.buildRunGraphForkChunk, 'function');
 assert.equal(typeof api.buildRunGraphJoinChunk, 'function');
@@ -493,6 +499,47 @@ assert.equal(importedLiveRead.sourceKind, 'frontier-swarm-codex');
 assert.equal(importedLiveRead.sourceMetadata.eventTypes.length, 4);
 assert.equal(importedLiveRead.metadata.swarmCodex.summary.jobCount, 1);
 assert.equal(importedLiveRead.metadata.swarmCodexLive.eventCount, liveRunGraphEvents.length);
+const frontierRunEvents = createFrontierRunEventsFixture(frontierRun);
+const frontierRunJsonl = frontierRunEvents.map((event) => frontierRun.serializeRunEventJsonl(event)).join('');
+const parsedFrontierRunEvents = api.parseFrontierRunEventsInput(frontierRunJsonl);
+assert.equal(parsedFrontierRunEvents.length, frontierRunEvents.length);
+const normalizedFrontierRun = api.normalizeFrontierRunEvents(parsedFrontierRunEvents, {
+  root,
+  runId: 'normalized/frontier-run',
+  sourcePath: 'agent-runs/demo/run-events.jsonl'
+});
+assert.equal(normalizedFrontierRun.kind, 'loom.run-graph');
+assert.equal(normalizedFrontierRun.runId, 'normalized/frontier-run');
+assert.equal(normalizedFrontierRun.sourceKind, 'frontier-run');
+assert.equal(normalizedFrontierRun.sourceMetadata.path, 'agent-runs/demo/run-events.jsonl');
+assert.equal(normalizedFrontierRun.sourceMetadata.eventCount, frontierRunEvents.length);
+assert.equal(normalizedFrontierRun.summary.nodes, 8);
+assert.equal(normalizedFrontierRun.summary.edges, 7);
+assert.equal(normalizedFrontierRun.summary.typedCounts.tasks, 1);
+assert.equal(normalizedFrontierRun.summary.typedCounts.workers, 1);
+assert.equal(normalizedFrontierRun.summary.typedCounts.candidates, 1);
+assert.equal(normalizedFrontierRun.summary.typedCounts.gates, 1);
+assert.equal(normalizedFrontierRun.decisionGraph.kind, 'loom.decision-graph');
+assert.ok(normalizedFrontierRun.decisionGraph.events.some((event) =>
+  event.type === 'decision.recorded' &&
+  event.nodeIds.includes('decision:demo')
+));
+assert.ok(normalizedFrontierRun.decisionGraph.records.some((record) => record.kind === 'loom.decision-graph.merge-candidate'));
+assert.equal(normalizedFrontierRun.metadata.frontierRun.eventCount, frontierRunEvents.length);
+fs.writeFileSync(path.join(root, 'run-events.jsonl'), frontierRunJsonl);
+const importFrontierRunCli = JSON.parse(run('run-graph', 'import-frontier-run', 'run-events.jsonl', '--run-id', 'imported/frontier-run', '--json'));
+assert.equal(importFrontierRunCli.ok, true);
+assert.equal(importFrontierRunCli.runId, 'imported/frontier-run');
+assert.equal(importFrontierRunCli.sourceKind, 'frontier-run');
+assert.equal(importFrontierRunCli.sourceMetadata.eventCount, frontierRunEvents.length);
+assert.equal(relativeToRoot(importFrontierRunCli.path), '.loom/graph/runs/imported_frontier-run.json');
+const importedFrontierRunStatus = JSON.parse(run('run-graph', 'status', 'imported/frontier-run', '--json'));
+assert.equal(importedFrontierRunStatus.ok, true);
+assert.equal(importedFrontierRunStatus.sourceKind, 'frontier-run');
+assert.equal(importedFrontierRunStatus.sourceMetadata.path, 'run-events.jsonl');
+const importedFrontierRunRead = JSON.parse(run('run-graph', 'read', 'imported/frontier-run'));
+assert.equal(importedFrontierRunRead.sourceKind, 'frontier-run');
+assert.equal(importedFrontierRunRead.metadata.frontierRun.eventCount, frontierRunEvents.length);
 const graphAfterRunGraph = JSON.parse(fs.readFileSync(path.join(root, '.loom', 'graph', 'current.json'), 'utf8'));
 assert.equal(graphAfterRunGraph.kind, 'loom.graph');
 assert.equal(graphAfterRunGraph.summary.files, 5);

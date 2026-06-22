@@ -1,10 +1,16 @@
 import path from 'node:path';
+import type { FrontierRunEvent } from '@shapeshift-labs/frontier-run';
 import { abs, nowIso, pathExists, readJson, resolveRoot, writeJson } from './common.js';
 import { readLoomConfig } from './config.js';
 import {
   FRONTIER_SWARM_CODEX_LIVE_RUN_GRAPH_EVENTS_ARTIFACT,
   materializeSwarmCodexLiveRunGraphEvents
 } from './graph-live.js';
+import {
+  FRONTIER_RUN_GRAPH_SOURCE,
+  normalizeFrontierRunEvents,
+  parseFrontierRunEventsInput
+} from './graph-frontier-run.js';
 import type {
   JsonValue,
   LoomDecisionGraph,
@@ -18,6 +24,7 @@ import type {
   LoomDecisionGraphRecordStatus,
   LoomDecisionGraphSnapshot,
   LoomEvidenceKind,
+  LoomFrontierRunImportOptions,
   LoomConfig,
   LoomGraph,
   LoomPanelProjectionRecord,
@@ -46,6 +53,11 @@ export {
   materializeSwarmCodexLiveRunGraphEvents,
   parseSwarmCodexRunGraphInput
 } from './graph-live.js';
+export {
+  FRONTIER_RUN_GRAPH_SOURCE,
+  normalizeFrontierRunEvents,
+  parseFrontierRunEventsInput
+} from './graph-frontier-run.js';
 
 export function buildRunGraphChunkTemplate(options: {
   id?: string;
@@ -266,6 +278,27 @@ export async function importSwarmCodexRunGraph(
     present: true,
     source: FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE,
     sourceKind: FRONTIER_SWARM_CODEX_RUN_GRAPH_SOURCE,
+    sourceMetadata: graph.sourceMetadata,
+    graphSummary: graph.summary
+  };
+}
+
+export async function importFrontierRunEvents(
+  input: readonly FrontierRunEvent[] | string,
+  options: LoomFrontierRunImportOptions = {}
+): Promise<LoomRunGraphImportResult> {
+  const events = typeof input === 'string' ? parseFrontierRunEventsInput(input) : input;
+  const graph = normalizeFrontierRunEvents(events, options);
+  const runId = options.runId ?? graph.runId ?? 'current';
+  const file = await writeLoomRunGraph(graph, { root: options.root, runId });
+  return {
+    ok: true,
+    message: `imported frontier-run events ${runId}`,
+    path: file,
+    runId,
+    present: true,
+    source: FRONTIER_RUN_GRAPH_SOURCE,
+    sourceKind: FRONTIER_RUN_GRAPH_SOURCE,
     sourceMetadata: graph.sourceMetadata,
     graphSummary: graph.summary
   };

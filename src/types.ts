@@ -125,7 +125,7 @@ export interface LoomRunGraph {
   metadata?: Record<string, JsonValue>;
 }
 
-export type LoomRunGraphSourceKind = 'loom-native' | 'frontier-swarm-codex' | string;
+export type LoomRunGraphSourceKind = 'loom-native' | 'frontier-swarm-codex' | 'frontier-run' | string;
 
 export interface LoomRunGraphSourceMetadata {
   kind: LoomRunGraphSourceKind;
@@ -600,6 +600,10 @@ export interface LoomRunGraphOptions {
 }
 
 export interface LoomSwarmCodexRunGraphImportOptions extends LoomRunGraphOptions {
+  sourcePath?: string;
+}
+
+export interface LoomFrontierRunImportOptions extends LoomRunGraphOptions {
   sourcePath?: string;
 }
 

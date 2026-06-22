@@ -11,8 +11,10 @@ import { initLoomProject } from './init.js';
 import { scanLoomProject } from './scan.js';
 import { readLoomStatus, doctorLoomProject } from './status.js';
 import {
+  importFrontierRunEvents,
   importSwarmCodexRunGraph,
   loomRunGraphSourceKind,
+  parseFrontierRunEventsInput,
   parseSwarmCodexRunGraphInput,
   readLoomGraph,
   readLoomRunGraph,
@@ -125,6 +127,18 @@ async function runLoomRunGraphCommand(args: CliArgs, json: boolean): Promise<num
     }), json);
     return 0;
   }
+  if (subcommand === 'import-frontier-run' || subcommand === 'import-run') {
+    const input = args._[1] ?? stringArg(args.input);
+    if (!input) throw new Error('run-graph import-frontier-run requires <run-events.jsonl|->');
+    const events = parseFrontierRunEventsInput(readTextInput(input));
+    const targetRunId = runGraphRunId(args, 2);
+    printResult(await importFrontierRunEvents(events, {
+      root: stringArg(args.root),
+      runId: targetRunId,
+      sourcePath: input === '-' ? 'stdin' : input
+    }), json);
+    return 0;
+  }
   throw new Error(`unknown run-graph command: ${subcommand}`);
 }
 
@@ -212,6 +226,7 @@ Usage:
   loom run-graph status [<run-id>] [--run-id <id>] [--json]
   loom run-graph write-json <file|-> [--run-id <id>] [--json]
   loom run-graph import-swarm <json-or-jsonl|-> [--run-id <id>] [--json]
+  loom run-graph import-frontier-run <run-events.jsonl|-> [--run-id <id>] [--json]
 
 Examples:
   loom run-graph status agent-run-2026 --json
@@ -219,6 +234,7 @@ Examples:
   loom run-graph write-json run-graph.json --run-id agent-run-2026
   loom run-graph import-swarm agent-runs/my-run/collected/run-graph.json --run-id agent-runs/my-run
   loom run-graph import-swarm agent-runs/my-run/live-run-graph-events.jsonl --run-id agent-runs/my-run
+  loom run-graph import-frontier-run agent-runs/my-run/run-events.jsonl --run-id agent-runs/my-run
 `;
 }
 
