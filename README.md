@@ -316,10 +316,13 @@ loom ui --collection agent-runs/my-run/collected --continuation agent-runs/my-ru
 ```
 
 The UI reads dashboard snapshots from `@shapeshift-labs/frontier-swarm-codex`
-and writes steering intent files for the coordinator to consume. The snapshot
-schema and steering API stay in the swarm packages rather than inside the UI.
-Run `loom status --json` to discover local `uiLaunch.detected` run and
-collection commands before opening a dashboard.
+and projects shared substrate records from `@shapeshift-labs/frontier-run`,
+`@shapeshift-labs/frontier-lease`, `@shapeshift-labs/frontier-test`, and
+`@shapeshift-labs/frontier-swarm-git`. Steering intent files still route back
+to the coordinator; the snapshot schema, substrate contracts, and steering API
+stay in the Frontier packages rather than inside the UI. Run
+`loom status --json` to discover local `uiLaunch.detected` run and collection
+commands before opening a dashboard.
 
 ### `loom lang`
 

@@ -10,8 +10,12 @@ const packageChecks = [
   { name: '@shapeshift-labs/frontier-lang', required: true },
   { name: '@shapeshift-labs/frontier-lang-cli', required: true },
   { name: '@shapeshift-labs/frontier-lang-compiler', required: true },
+  { name: '@shapeshift-labs/frontier-run', required: true },
+  { name: '@shapeshift-labs/frontier-lease', required: true },
   { name: '@shapeshift-labs/frontier-swarm', required: true },
   { name: '@shapeshift-labs/frontier-swarm-codex', required: true },
+  { name: '@shapeshift-labs/frontier-swarm-git', required: true },
+  { name: '@shapeshift-labs/frontier-test', required: true },
   { name: '@shapeshift-labs/frontier-loom-ui', required: true },
   { name: '@shapeshift-labs/frontier-framework', required: true }
 ];

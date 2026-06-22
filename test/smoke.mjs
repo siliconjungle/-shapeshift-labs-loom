@@ -155,6 +155,17 @@ const doctor = JSON.parse(run('doctor', '--json'));
 assert.equal(doctor.ok, true);
 assert.deepEqual(doctor.missing, []);
 assert.deepEqual(doctor.optionalMissing, []);
+for (const packageName of [
+  '@shapeshift-labs/frontier-run',
+  '@shapeshift-labs/frontier-lease',
+  '@shapeshift-labs/frontier-swarm',
+  '@shapeshift-labs/frontier-swarm-codex',
+  '@shapeshift-labs/frontier-swarm-git',
+  '@shapeshift-labs/frontier-test',
+  '@shapeshift-labs/frontier-loom-ui'
+]) {
+  assert.equal(typeof doctor.status.packages[packageName], 'string');
+}
 run('graph');
 const snapshotOut = JSON.parse(run('snapshot', '-m', 'first semantic checkpoint', '--json'));
 assert.equal(snapshotOut.ok, true);
