@@ -172,6 +172,8 @@ export function languageForPath(file: string): LoomLanguage {
   if (/\.java$/.test(file)) return 'java';
   if (/\.kt$/.test(file)) return 'kotlin';
   if (/\.swift$/.test(file)) return 'swift';
+  if (/\.css$/.test(file)) return 'css';
+  if (/\.html?$/.test(file)) return 'html';
   return 'unknown';
 }
 

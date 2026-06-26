@@ -11,15 +11,15 @@ export type LoomLanguage =
   | 'java'
   | 'kotlin'
   | 'swift'
+  | 'css'
+  | 'html'
   | 'unknown';
 
 export type LoomSyntax =
   | LoomLanguage
   | 'jsx'
   | 'tsx'
-  | 'css'
   | 'json'
-  | 'html'
   | 'svg'
   | 'markdown'
   | 'text';

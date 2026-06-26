@@ -193,6 +193,12 @@ assert.deepEqual(graph.files.map((file) => file.path), [
 const jsxRecord = graph.files.find((file) => file.path === 'src/view.jsx');
 assert.equal(jsxRecord.language, 'javascript');
 assert.equal(jsxRecord.syntax, 'jsx');
+const cssRecord = graph.files.find((file) => file.path === 'src/theme.css');
+assert.equal(cssRecord.language, 'css');
+assert.equal(cssRecord.semantic.ok, true);
+const htmlRecord = graph.files.find((file) => file.path === 'public/index.html');
+assert.equal(htmlRecord.language, 'html');
+assert.equal(htmlRecord.semantic.ok, true);
 assert.equal(typeof graph.objectId, 'string');
 
 fs.appendFileSync(path.join(root, 'src', 'app.ts'), 'export const one = 1;\n');
@@ -207,6 +213,8 @@ const api = await import('../dist/index.js');
 const frontierRun = await import('@shapeshift-labs/frontier-run');
 assert.equal(api.languageForPath('x.ts'), 'typescript');
 assert.equal(api.languageForPath('x.jsx'), 'javascript');
+assert.equal(api.languageForPath('x.css'), 'css');
+assert.equal(api.languageForPath('x.html'), 'html');
 assert.equal(api.syntaxForPath('x.jsx'), 'jsx');
 assert.equal(typeof api.scanLoomProject, 'function');
 assert.equal(typeof api.readLoomGraph, 'function');

@@ -113,5 +113,5 @@ export async function readLoomIgnore(root: string): Promise<string[]> {
 }
 
 function defaultLanguages(): LoomLanguage[] {
-  return ['javascript', 'typescript', 'python', 'rust', 'c', 'csharp', 'go', 'java', 'kotlin', 'swift'];
+  return ['javascript', 'typescript', 'python', 'rust', 'c', 'csharp', 'go', 'java', 'kotlin', 'swift', 'css', 'html'];
 }
