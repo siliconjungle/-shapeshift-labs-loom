@@ -1,6 +1,6 @@
 {
   "name": "@shapeshift-labs/loom",
-  "version": "0.1.50",
+  "version": "0.1.51",
   "description": "Repo-level semantic collaboration CLI over Frontier Lang, Frontier Swarm, and Frontier patches.",
   "type": "module",
   "license": "MIT",
@@ -65,9 +65,9 @@
   "dependencies": {
     "@shapeshift-labs/frontier": "0.1.9",
     "@shapeshift-labs/frontier-framework": "0.1.4",
-    "@shapeshift-labs/frontier-lang": "^0.4.120",
-    "@shapeshift-labs/frontier-lang-cli": "^0.3.58",
-    "@shapeshift-labs/frontier-lang-compiler": "^0.2.175",
+    "@shapeshift-labs/frontier-lang": "^0.4.121",
+    "@shapeshift-labs/frontier-lang-cli": "^0.3.59",
+    "@shapeshift-labs/frontier-lang-compiler": "^0.2.176",
     "@shapeshift-labs/frontier-lease": "0.1.2",
     "@shapeshift-labs/frontier-loom-ui": "0.1.19",
     "@shapeshift-labs/frontier-run": "0.1.2",
