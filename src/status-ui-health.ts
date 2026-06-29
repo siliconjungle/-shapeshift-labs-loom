@@ -4,6 +4,8 @@ import type { DetectedUiTarget, NumericUiTargetField, UiArtifact, UiArtifactRole
 
 export async function readCollectionHealth(dir: string): Promise<Partial<DetectedUiTarget>> {
   const compact = await safeReadJson(path.join(dir, 'compact-dashboard.json'));
+  const mergeMetrics = await safeReadJson(path.join(dir, 'merge-metrics-feedback.json'));
+  const mergeMetricsSummary = recordValue(mergeMetrics?.summary);
   const ledger = await readApplyLedgerHealth(dir);
   return {
     ...optionalNumberField(compact, 'activeJobs'),
@@ -14,7 +16,12 @@ export async function readCollectionHealth(dir: string): Promise<Partial<Detecte
     ...mergeOptionalNumber('applied', ledger.applied),
     ...mergeOptionalNumber('committed', ledger.committed),
     ...mergeOptionalNumber('skipped', ledger.skipped),
-    ...mergeOptionalNumber('failed', ledger.failed)
+    ...mergeOptionalNumber('failed', ledger.failed),
+    ...mergeOptionalNumber('mergeMetricEventCount', maxDefinedNumber(numberFromRecord(mergeMetricsSummary, 'eventCount'), numberFromRecord(mergeMetrics, 'eventCount'))),
+    ...mergeOptionalNumber('mergeMetricCorrelatedRegionCount', numberFromRecord(mergeMetricsSummary, 'correlatedRegionCount')),
+    ...mergeOptionalNumber('mergeMetricSuggestionCount', numberFromRecord(mergeMetricsSummary, 'suggestionCount')),
+    ...mergeOptionalNumber('mergeMetricPreferredLeaseKeyCount', numberFromRecord(mergeMetricsSummary, 'preferredLeaseKeyCount')),
+    ...mergeOptionalNumber('mergeMetricSplitTaskRegionKeyCount', numberFromRecord(mergeMetricsSummary, 'splitTaskRegionKeyCount'))
   };
 }
 
@@ -27,6 +34,7 @@ export function targetHealth(
   if (collectionHealth.activeJobs && collectionHealth.activeJobs > 0) return 'active';
   if (collectionHealth.landed && collectionHealth.landed > 0) return 'landed';
   if (collectionHealth.usefulPatchCount && collectionHealth.usefulPatchCount > 0) return 'patches-ready';
+  if (collectionHealth.mergeMetricSuggestionCount && collectionHealth.mergeMetricSuggestionCount > 0) return 'merge-feedback';
   if (kind === 'run' && artifacts.some((artifact) => artifact.role === 'active')) return 'active-artifacts';
   if (kind === 'collection') return 'collection-ready';
   return 'ready';
@@ -80,6 +88,10 @@ function numberFromRecord(record: Record<string, unknown> | undefined, key: stri
   if (!record) return undefined;
   const value = record[key];
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : undefined;
+}
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
 
 function numberFromPath(record: Record<string, unknown>, keys: string[]): number | undefined {

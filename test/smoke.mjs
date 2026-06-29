@@ -57,6 +57,23 @@ fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'collected', 'compact-das
   stalePatchCount: 0,
   landedCount: 1
 }, null, 2) + '\n');
+fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'collected', 'merge-metrics-feedback.json'), JSON.stringify({
+  kind: 'frontier.swarm-codex.merge-metrics-feedback',
+  version: 1,
+  generatedAt: Date.now(),
+  runId: 'demo',
+  eventCount: 3,
+  summary: {
+    eventCount: 3,
+    correlatedRegionCount: 2,
+    suggestionCount: 2,
+    highSeveritySuggestionCount: 1,
+    preferredLeaseKeyCount: 1,
+    avoidConcurrentRegionKeyCount: 1,
+    splitTaskRegionKeyCount: 1,
+    refactorCandidateRegionKeyCount: 0
+  }
+}, null, 2) + '\n');
 fs.writeFileSync(path.join(root, 'agent-runs', 'demo', 'collected', 'apply-ledger', 'apply-ledger.json'), JSON.stringify({
   kind: 'frontier.swarm-codex.apply-ledger',
   summary: {
@@ -86,6 +103,7 @@ assert.match(statusText, /UI targets available via loom ui <path>/);
 assert.match(statusText, /ui target health:/);
 assert.match(statusText, /run agent-runs\/demo: dashboard=loom ui agent-runs\/demo; url=http:\/\/127\.0\.0\.1:<assigned-port>\/; source=--run agent-runs\/demo; health=active-artifacts; active artifacts=agent-runs\/demo\/codex-events\.jsonl/);
 assert.match(statusText, /collection agent-runs\/demo\/collected: dashboard=loom ui agent-runs\/demo\/collected; url=http:\/\/127\.0\.0\.1:<assigned-port>\/; source=--collection agent-runs\/demo\/collected; health=attention; total=3; active jobs=0; landed=1; applied=1; committed=0; skipped=0; failed=1; patches=2/);
+assert.match(statusText, /merge events=3; correlated regions=2; merge suggestions=2; preferred leases=1/);
 assert.match(statusText, /landed artifacts=agent-runs\/demo\/collected\/apply-ledger\/apply-ledger\.json/);
 assert.match(statusText, /health artifacts=agent-runs\/demo\/collected\/collection\.json, agent-runs\/demo\/collected\/compact-dashboard\.json/);
 const status = JSON.parse(run('status', '--json'));
@@ -100,6 +118,10 @@ assert.equal(status.uiLaunch.health.collectionCount, 1);
 assert.equal(status.uiLaunch.health.landed, 1);
 assert.equal(status.uiLaunch.health.applied, 1);
 assert.equal(status.uiLaunch.health.failed, 1);
+assert.equal(status.uiLaunch.health.mergeMetricEventCount, 3);
+assert.equal(status.uiLaunch.health.mergeMetricCorrelatedRegionCount, 2);
+assert.equal(status.uiLaunch.health.mergeMetricSuggestionCount, 2);
+assert.equal(status.uiLaunch.health.mergeMetricPreferredLeaseKeyCount, 1);
 assert.ok(status.uiLaunch.health.activeArtifactPaths.includes('agent-runs/demo/codex-events.jsonl'));
 assert.ok(status.uiLaunch.health.landedArtifactPaths.includes('agent-runs/demo/collected/apply-ledger/apply-ledger.json'));
 assert.ok(status.uiLaunch.shortcuts.some((item) => item.includes('--collection')));
@@ -128,9 +150,12 @@ assert.equal(detectedCollection.committed, 0);
 assert.equal(detectedCollection.skipped, 0);
 assert.equal(detectedCollection.failed, 1);
 assert.equal(detectedCollection.usefulPatchCount, 2);
+assert.equal(detectedCollection.mergeMetricEventCount, 3);
+assert.equal(detectedCollection.mergeMetricSuggestionCount, 2);
 assert.equal(detectedCollection.dataSource, '--collection agent-runs/demo/collected');
 assert.equal(detectedCollection.dataSourcePath, 'agent-runs/demo/collected');
 assert.ok(detectedCollection.healthArtifacts.includes('agent-runs/demo/collected/compact-dashboard.json'));
+assert.ok(detectedCollection.healthArtifacts.includes('agent-runs/demo/collected/merge-metrics-feedback.json'));
 assert.ok(detectedCollection.landedArtifacts.includes('agent-runs/demo/collected/apply-ledger/apply-ledger.json'));
 assert.ok(status.uiLaunch.detected.some((item) =>
   item.kind === 'collection' &&

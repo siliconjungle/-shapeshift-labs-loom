@@ -44,20 +44,16 @@ export interface DetectedUiTarget {
   skipped?: number;
   usefulPatchCount?: number;
   stalePatchCount?: number;
+  mergeMetricEventCount?: number;
+  mergeMetricCorrelatedRegionCount?: number;
+  mergeMetricSuggestionCount?: number;
+  mergeMetricPreferredLeaseKeyCount?: number;
+  mergeMetricSplitTaskRegionKeyCount?: number;
   total?: number;
   failed?: number;
 }
 
-export type NumericUiTargetField =
-  | 'activeJobs'
-  | 'landed'
-  | 'applied'
-  | 'committed'
-  | 'skipped'
-  | 'usefulPatchCount'
-  | 'stalePatchCount'
-  | 'total'
-  | 'failed';
+export type NumericUiTargetField = 'activeJobs' | 'landed' | 'applied' | 'committed' | 'skipped' | 'usefulPatchCount' | 'stalePatchCount' | 'mergeMetricEventCount' | 'mergeMetricCorrelatedRegionCount' | 'mergeMetricSuggestionCount' | 'mergeMetricPreferredLeaseKeyCount' | 'mergeMetricSplitTaskRegionKeyCount' | 'total' | 'failed';
 
 export async function readUiLaunchStatus(root: string): Promise<Record<string, unknown>> {
   const detected = await detectLoomUiTargets(root);
@@ -211,6 +207,7 @@ function collectionArtifactSpecs(): UiArtifactSpec[] {
     { label: 'artifact-store', relativePath: 'artifact-store/artifact-store.json', role: 'health' },
     { label: 'evidence-index', relativePath: 'evidence-index.json', role: 'health' },
     { label: 'merge-index', relativePath: 'merge-index.json', role: 'health' },
+    { label: 'merge-metrics-feedback', relativePath: 'merge-metrics-feedback.json', role: 'health' },
     { label: 'queue-overlay', relativePath: 'queue-overlay.json', role: 'health' }
   ];
 }
@@ -246,6 +243,11 @@ function summarizeUiLaunchHealth(targets: DetectedUiTarget[]): Record<string, un
     skipped: sumNumberField(targets, 'skipped'),
     usefulPatchCount: sumNumberField(targets, 'usefulPatchCount'),
     stalePatchCount: sumNumberField(targets, 'stalePatchCount'),
+    mergeMetricEventCount: sumNumberField(targets, 'mergeMetricEventCount'),
+    mergeMetricCorrelatedRegionCount: sumNumberField(targets, 'mergeMetricCorrelatedRegionCount'),
+    mergeMetricSuggestionCount: sumNumberField(targets, 'mergeMetricSuggestionCount'),
+    mergeMetricPreferredLeaseKeyCount: sumNumberField(targets, 'mergeMetricPreferredLeaseKeyCount'),
+    mergeMetricSplitTaskRegionKeyCount: sumNumberField(targets, 'mergeMetricSplitTaskRegionKeyCount'),
     failed: sumNumberField(targets, 'failed'),
     activeArtifactPaths: uniqueStrings(targets.flatMap((target) => target.activeArtifacts)),
     landedArtifactPaths: uniqueStrings(targets.flatMap((target) => target.landedArtifacts)),
@@ -268,6 +270,10 @@ function formatUiTargetStatusLine(target: DetectedUiTarget): string {
   if (typeof target.skipped === 'number') details.push(`skipped=${target.skipped}`);
   if (typeof target.failed === 'number') details.push(`failed=${target.failed}`);
   if (typeof target.usefulPatchCount === 'number') details.push(`patches=${target.usefulPatchCount}`);
+  if (typeof target.mergeMetricEventCount === 'number') details.push(`merge events=${target.mergeMetricEventCount}`);
+  if (typeof target.mergeMetricCorrelatedRegionCount === 'number') details.push(`correlated regions=${target.mergeMetricCorrelatedRegionCount}`);
+  if (typeof target.mergeMetricSuggestionCount === 'number') details.push(`merge suggestions=${target.mergeMetricSuggestionCount}`);
+  if (typeof target.mergeMetricPreferredLeaseKeyCount === 'number') details.push(`preferred leases=${target.mergeMetricPreferredLeaseKeyCount}`);
   if (target.activeArtifacts.length) details.push(`active artifacts=${formatPathList(target.activeArtifacts)}`);
   if (target.landedArtifacts.length) details.push(`landed artifacts=${formatPathList(target.landedArtifacts)}`);
   if (target.healthArtifacts.length) details.push(`health artifacts=${formatPathList(target.healthArtifacts)}`);
